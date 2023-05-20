@@ -1,8 +1,9 @@
-﻿<Window x:Class="LogViewer.MainWindow"
+<Window x:Class="LogViewer.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         xmlns:local="clr-namespace:LogViewer"
         xmlns:tb="http://www.hardcodet.net/taskbar"
         mc:Ignorable="d"
@@ -44,7 +45,10 @@
 
         <Image x:Key="VisibilityImage" Source ="/Resources/visibility.png" Width="21" Height="21" />
         <Image x:Key="VisibilityOffImage" Source ="/Resources/visibilityOff.png" Width="21" Height="21" />
-    </Window.Resources>
+        <Image x:Key="SshOnImage" Source ="/Resources/sshOn.png" Width="21" Height="21" />
+        <Image x:Key="SshOffImage" Source ="/Resources/sshOff.png" Width="21" Height="21" />
+        <sys:Int16 x:Key="defaultPort">22</sys:Int16>
+  </Window.Resources>
 
     <Window.CommandBindings>
         <CommandBinding  Command="{StaticResource SearchTextCommand}" Executed="SearchText"  />
@@ -57,6 +61,8 @@
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="32" />
+            <RowDefinition Height="auto" />
+            <RowDefinition Height="auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="auto" />
             <RowDefinition Height="250" />
@@ -72,6 +78,7 @@
                 <ColumnDefinition Width="auto" />
                 <ColumnDefinition Width="auto" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="auto" />
                 <ColumnDefinition Width="auto" />
                 <ColumnDefinition Width="auto" />
                 <ColumnDefinition Width="auto" />
@@ -103,14 +110,30 @@
                     </Style>
                 </ToggleButton.Style>
             </ToggleButton>
-            
-            <Button Grid.Column="7" Width="25" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" Command="{StaticResource SearchTextCommand}" >
+
+            <ToggleButton x:Name="SSHVisibilityToggleBtn" Grid.Column="7" Width="25" Height="25" Margin="5,0,0,0" Checked = "SSHVisibilityCheck" Unchecked = "SSHVisibilityUnchecked" HorizontalAlignment="Right">
+              <ToggleButton.Style>
+                <Style TargetType="{x:Type ToggleButton}">
+                  <Style.Triggers>
+
+                    <Trigger Property="IsChecked" Value="true">
+                      <Setter Property="Content" Value ="{StaticResource SshOnImage}" />
+                    </Trigger>
+                    <Trigger Property="IsChecked" Value="false">
+                      <Setter Property="Content" Value ="{StaticResource SshOffImage}" />
+                    </Trigger>
+                  </Style.Triggers>
+                </Style>
+              </ToggleButton.Style>
+            </ToggleButton>
+
+            <Button Grid.Column="8" Width="25" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" Command="{StaticResource SearchTextCommand}" >
                 <DockPanel>
                     <Image Source="Resources/find.png"/>
                 </DockPanel>
             </Button>
 
-            <Button Grid.Column="8" Width="25" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" Click="Settins_Click" >
+            <Button Grid.Column="9" Width="25" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" Click="Settins_Click" >
                 <DockPanel>
                     <Image Source="Resources/settings.png"/>
                 </DockPanel>
@@ -118,77 +141,114 @@
               
         </Grid>
 
-        <DataGrid x:Name="LogsGrid" Grid.Row="1" AutoGenerateColumns="False" HorizontalGridLinesBrush="#FFC7C7C7" GridLinesVisibility="Horizontal" Margin="0,0,0,0" SelectionMode="Extended" RowHeight="20" SelectionChanged="LogsGrid_SelectionChanged" CanUserAddRows="false" CanUserDeleteRows="False" SelectionUnit="FullRow" >
+        <Grid Grid.Row="1" VerticalAlignment="Top" Margin="0,2,0,0" x:Name="SshConfig1">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="auto" />
+          </Grid.ColumnDefinitions>
 
-            <DataGrid.CellStyle>
-                <Style TargetType="{x:Type DataGridCell}">
+          <Label Grid.Column="0" Content="Host" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
+          <TextBox Grid.Column="1" x:Name="SshHost" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="Remote host name or ip..." Text="" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="Filter_TextChanged"/>
+
+          <Label Grid.Column="2" Content="Port" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
+          <TextBox Grid.Column="3" x:Name="SshPort" HorizontalAlignment="Left" Style="{StaticResource placeHolder}" Tag="Port.." Text="22" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="Filter_TextChanged"/>
+
+          <Label Grid.Column="4" Content="Login" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
+          <TextBox Grid.Column="5" x:Name="SshLogin" HorizontalAlignment="Left" Style="{StaticResource placeHolder}" Tag="login.." Text="" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="Filter_TextChanged"/>
+
+          <Label Grid.Column="6" Content="Password" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
+          <PasswordBox Grid.Column="7" x:Name="SshPassword" HorizontalAlignment="Left" Tag="password.." VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0"/>
+
+         </Grid>
+
+        <Grid Grid.Row="2" VerticalAlignment="Top" Margin="0,2,0,0"  x:Name="SshConfig2">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+
+      <Label Grid.Column="0" Content="Remote folder" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
+      <TextBox Grid.Column="1" x:Name="SShRemoteFolder" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="Folder on remote host.." Text="" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="Filter_TextChanged"/>
+
+        </Grid>
+
+        <DataGrid x:Name="LogsGrid" Grid.Row="3" AutoGenerateColumns="False" HorizontalGridLinesBrush="#FFC7C7C7" GridLinesVisibility="Horizontal" Margin="0,0,0,0" SelectionMode="Extended" RowHeight="20" SelectionChanged="LogsGrid_SelectionChanged" CanUserAddRows="false" CanUserDeleteRows="False" SelectionUnit="FullRow" >
+
+                <DataGrid.CellStyle>
+                    <Style TargetType="{x:Type DataGridCell}">
                     
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding Level}" Value="Error">
-                            <Setter Property="Foreground" Value="Red" />
-                        </DataTrigger>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Level}" Value="Error">
+                                <Setter Property="Foreground" Value="Red" />
+                            </DataTrigger>
 
-                        <DataTrigger Binding="{Binding Level}" Value="Debug">
-                            <Setter Property="Foreground" Value="Blue" />
-                        </DataTrigger>
+                            <DataTrigger Binding="{Binding Level}" Value="Debug">
+                                <Setter Property="Foreground" Value="Blue" />
+                            </DataTrigger>
 
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter Property="BorderThickness" Value="0"/>
-                        </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="BorderThickness" Value="0"/>
+                            </Trigger>
 
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter Property="Foreground" Value="White"/>
-                        </Trigger>
-                    </Style.Triggers>
-                </Style>
-            </DataGrid.CellStyle>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.CellStyle>
 
-            <DataGrid.RowStyle>
-                <Style TargetType="{x:Type DataGridRow}">
-                    <EventSetter Event="Control.RequestBringIntoView" Handler="LogsGrid_RequestBringIntoView"/>
-                    <EventSetter Event="PreviewKeyDown" Handler="LogsGrid_PreviewKeyDown"/>
-                </Style>
-            </DataGrid.RowStyle>
+                <DataGrid.RowStyle>
+                    <Style TargetType="{x:Type DataGridRow}">
+                        <EventSetter Event="Control.RequestBringIntoView" Handler="LogsGrid_RequestBringIntoView"/>
+                        <EventSetter Event="PreviewKeyDown" Handler="LogsGrid_PreviewKeyDown"/>
+                    </Style>
+                </DataGrid.RowStyle>
 
-            <DataGrid.CommandBindings>
-                <CommandBinding Command="Copy" Executed="CopyCommand" />
-            </DataGrid.CommandBindings>
+                <DataGrid.CommandBindings>
+                    <CommandBinding Command="Copy" Executed="CopyCommand" />
+                </DataGrid.CommandBindings>
 
-            <DataGrid.ContextMenu>
-                <ContextMenu>
-                    <MenuItem Header="Copy" Command="Copy" />
-                </ContextMenu>
-            </DataGrid.ContextMenu>
+                <DataGrid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Copy" Command="Copy" />
+                    </ContextMenu>
+                </DataGrid.ContextMenu>
 
-            <DataGrid.InputBindings>
-                <KeyBinding Key="C" Modifiers="Control" Command="Copy" />
-            </DataGrid.InputBindings>
+                <DataGrid.InputBindings>
+                    <KeyBinding Key="C" Modifiers="Control" Command="Copy" />
+                </DataGrid.InputBindings>
 
 
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Time" Binding="{Binding Path=Time, StringFormat='yyyy-MM-dd HH:mm:ss.fff'}" Width="145" IsReadOnly="True" CanUserSort="False"/>
-                <DataGridTextColumn Header="Tenant" Binding="{Binding Path=Tenant}" Width="100" IsReadOnly="True" CanUserSort="False" Visibility="Collapsed"/>
-                <DataGridTextColumn Header="Pid" Binding="{Binding Path=Pid}" Width="80" IsReadOnly="True" CanUserSort="False" Visibility="Collapsed"/>
-                <DataGridTextColumn Header="Trace" Binding="{Binding Path=Trace}" Width="150" IsReadOnly="True" CanUserSort="False" Visibility="Collapsed"/>
-                <DataGridTextColumn Header="Level" Binding="{Binding Path=Level}" Width="50" IsReadOnly="True" CanUserSort="False"/>
-                <DataGridTextColumn Header="Logger" Binding="{Binding Path=Logger}" Width="110" IsReadOnly="True" CanUserSort="False"/>
-                <DataGridTextColumn Header="Message" Binding="{Binding Path=Message}" Width="auto" IsReadOnly="True" CanUserSort="False" ScrollViewer.HorizontalScrollBarVisibility="Visible"/>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Time" Binding="{Binding Path=Time, StringFormat='yyyy-MM-dd HH:mm:ss.fff'}" Width="145" IsReadOnly="True" CanUserSort="False"/>
+                    <DataGridTextColumn Header="Tenant" Binding="{Binding Path=Tenant}" Width="100" IsReadOnly="True" CanUserSort="False" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="Pid" Binding="{Binding Path=Pid}" Width="80" IsReadOnly="True" CanUserSort="False" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="Trace" Binding="{Binding Path=Trace}" Width="150" IsReadOnly="True" CanUserSort="False" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="Level" Binding="{Binding Path=Level}" Width="50" IsReadOnly="True" CanUserSort="False"/>
+                    <DataGridTextColumn Header="Logger" Binding="{Binding Path=Logger}" Width="110" IsReadOnly="True" CanUserSort="False"/>
+                    <DataGridTextColumn Header="Message" Binding="{Binding Path=Message}" Width="auto" IsReadOnly="True" CanUserSort="False" ScrollViewer.HorizontalScrollBarVisibility="Visible"/>
 
-            </DataGrid.Columns>
+                </DataGrid.Columns>
 
-            <DataGrid.Resources>
-                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" 
-                   Color="#007acc"/>
+                <DataGrid.Resources>
+                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" 
+                       Color="#007acc"/>
 
-                <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" 
-                   Color="#FFC9CBCD"/>
-            </DataGrid.Resources>
-        </DataGrid>
+                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" 
+                       Color="#FFC9CBCD"/>
+                </DataGrid.Resources>
+            </DataGrid>
 
-        <GridSplitter Grid.Row="2" Grid.ColumnSpan="3" Height="5"
+        <GridSplitter Grid.Row="4" Grid.ColumnSpan="3" Height="5"
         HorizontalAlignment="Stretch" VerticalAlignment="Center" />
 
-        <TabControl x:Name="BottomTabControl" Grid.Row="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" FontSize="12" FontStyle="Normal">
+        <TabControl x:Name="BottomTabControl" Grid.Row="5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" FontSize="12" FontStyle="Normal">
             <TabItem x:Name="DetailsTab">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal">

@@ -1,4 +1,4 @@
-﻿using LogReader;
+using LogReader;
 using Microsoft.Toolkit.Uwp.Notifications;
 using Microsoft.WindowsAPICodePack.Dialogs;
 using System;
@@ -36,6 +36,8 @@ namespace LogViewer
 
     private const string OpenAction = "OpenAction";
 
+    private const string OpenSshAction = "OpenSshAction";
+
     private const string All = "All";
 
     private const string IconFileName = "horse.png";
@@ -60,6 +62,8 @@ namespace LogViewer
     private string openedFileFullPath;
 
     private readonly string[] hiddenColumns = { "Pid", "Trace", "Tenant" };
+
+    private LogFile openSshLogFileObject = new LogFile(OpenSshAction, "Open from ssh-file...");
 
     public MainWindow()
     {
@@ -173,6 +177,8 @@ namespace LogViewer
       InitLevelFilter();
 
       logLinesView = CollectionViewSource.GetDefaultView(logLines);
+
+      SSHVisibilityToggleBtn.IsChecked = true;
     }
 
     private void InitTenantFilter()
@@ -348,6 +354,11 @@ namespace LogViewer
         else
           comboBox.SelectedItem = null;
 
+        return;
+      }
+
+      if (selectedItem.FullPath == OpenSshAction)
+      {
         return;
       }
 
@@ -606,6 +617,21 @@ namespace LogViewer
         SetFilter(Filter.Text, tenant, level);
       }
     }
+
+    private void SSHVisibilityCheck(object sender, RoutedEventArgs e)
+    {
+      SshConfig1.Visibility = Visibility.Visible;
+      SshConfig2.Visibility = Visibility.Visible;
+      LogsFileNames.Items.Add(openSshLogFileObject);
+    }
+
+  private void SSHVisibilityUnchecked(object sender, RoutedEventArgs e)
+    {
+      SshConfig1.Visibility = Visibility.Collapsed;
+      SshConfig2.Visibility = Visibility.Collapsed;
+      LogsFileNames.Items.Remove(openSshLogFileObject);
+    }
+
     private void ColumnVisibilityCheck(object sender, RoutedEventArgs e)
     {
       foreach (var column in LogsGrid.Columns.Where(c => hiddenColumns.Contains(c.Header)))
