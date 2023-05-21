@@ -17,6 +17,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Renci.SshNet;
+using System.Text.RegularExpressions;
 
 
 namespace LogViewer
@@ -521,12 +522,24 @@ namespace LogViewer
     {
       var result = true;
 
+
       if (!string.IsNullOrEmpty(text))
       {
-        result = (!string.IsNullOrEmpty(line.FullMessage) && line.FullMessage.IndexOf(text, StringComparison.OrdinalIgnoreCase) > -1) ||
-          (!string.IsNullOrEmpty(line.Trace) && line.Trace.IndexOf(text, StringComparison.OrdinalIgnoreCase) > -1) ||
-          (!string.IsNullOrEmpty(line.Pid) && line.Pid.IndexOf(text, StringComparison.OrdinalIgnoreCase) > -1) ||
-          (!string.IsNullOrEmpty(line.Level) && line.Level.IndexOf(text, StringComparison.OrdinalIgnoreCase) > -1);
+        try
+        {
+          Regex regex = new Regex(text, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+          if (this.UseRegex.IsChecked.Value)
+            result = !string.IsNullOrEmpty(line.FullMessage) && regex.IsMatch(line.FullMessage);
+          else
+            result = !string.IsNullOrEmpty(line.FullMessage) && line.FullMessage.IndexOf(text, StringComparison.OrdinalIgnoreCase) > -1;
+          result = result || (!string.IsNullOrEmpty(line.Trace) && line.Trace.IndexOf(text, StringComparison.OrdinalIgnoreCase) > -1) ||
+                             (!string.IsNullOrEmpty(line.Pid) && line.Pid.IndexOf(text, StringComparison.OrdinalIgnoreCase) > -1) ||
+                             (!string.IsNullOrEmpty(line.Level) && line.Level.IndexOf(text, StringComparison.OrdinalIgnoreCase) > -1);
+        }
+        catch (RegexParseException)
+        {
+          result = false;
+        }
       }
 
       if (!string.IsNullOrEmpty(tenant) && !string.Equals(tenant, All, StringComparison.InvariantCultureIgnoreCase))
@@ -859,6 +872,7 @@ namespace LogViewer
     #endregion
 
     private void SshHost_TextChanged(object sender, TextChangedEventArgs e)
+    private void UseRegex_Changed()
     {
     }
 
@@ -877,6 +891,23 @@ namespace LogViewer
     private void SshConnect_Click(object sender, RoutedEventArgs e)
     {
       try
+      int startLength = this.Filter.Text.Length;
+      if (startLength == this.Filter.Text.Length && this.Filter.IsEnabled)
+      {
+        var tenant = this.TenantFilter.SelectedValue as string;
+        var level = this.LevelFilter.SelectedValue as string;
+        this.SetFilter(this.Filter.Text, tenant, level);
+      }
+    }
+    private void UseRegex_Checked(object sender, RoutedEventArgs e)
+    {
+      this.UseRegex_Changed();
+    }
+
+    private void UseRegex_Unchecked(object sender, RoutedEventArgs e)
+    {
+      this.UseRegex_Changed();
+    }
       {
         var host = this.SshHost.Text;
         var port = int.Parse(this.SshPort.Text);
