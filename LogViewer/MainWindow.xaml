@@ -83,9 +83,9 @@
                 <ColumnDefinition Width="auto" />
                 <ColumnDefinition Width="auto" />
                 <ColumnDefinition Width="auto" />
+                <ColumnDefinition Width="auto" />
             </Grid.ColumnDefinitions>
-            <ComboBox x:Name="LogsFileNames" Grid.Column="0" ItemsSource="{Binding}" HorizontalAlignment="Left"  VerticalAlignment="Center" Width="305" Height="25" Margin="0,0,0,0" FontSize="14" DisplayMemberPath="Name" SelectionChanged="Files_SelectionChanged">
-            </ComboBox>
+            <ComboBox x:Name="LogsFileNames" Grid.Column="0" ItemsSource="{Binding}" HorizontalAlignment="Left"  VerticalAlignment="Center" Width="500" Height="25" Margin="0,0,0,0" FontSize="14" DisplayMemberPath="Name" SelectionChanged="Files_SelectionChanged"/>
 
             <Label Grid.Column="1" Content="Tenant" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
             <ComboBox Grid.Column="2" x:Name="TenantFilter" HorizontalAlignment="Left"  VerticalAlignment="Center" FontStyle="Normal" Width="150" Height="24" FontSize="14" SelectionChanged="FilterTenant_SelectionChanged"/>
@@ -99,24 +99,7 @@
             <Label Grid.Column="6" Content="Regex" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
             <CheckBox Grid.Column="7" x:Name="UseRegex" HorizontalAlignment="Left"  IsChecked="False" VerticalAlignment="Center" FontStyle="Normal" Height="24" FontSize="14" Checked="UseRegex_Checked" Unchecked="UseRegex_Unchecked"/>
 
-
-            <ToggleButton x:Name="ColumnVisibilityToggleBtn" Grid.Column="8" Width="25" Height="25" Margin="5,0,0,0" Checked = "ColumnVisibilityCheck" Unchecked = "ColumnVisibilityUnchecked" HorizontalAlignment="Right">
-                <ToggleButton.Style>
-                    <Style TargetType="{x:Type ToggleButton}">
-                        <Style.Triggers>
-
-                            <Trigger Property="IsChecked" Value="true">
-                                <Setter Property="Content" Value ="{StaticResource VisibilityImage}" />
-                            </Trigger>
-                            <Trigger Property="IsChecked" Value="false">
-                                <Setter Property="Content" Value ="{StaticResource VisibilityOffImage}" />
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </ToggleButton.Style>
-            </ToggleButton>
-
-            <ToggleButton x:Name="SSHVisibilityToggleBtn" Grid.Column="7" Width="25" Height="25" Margin="5,0,0,0" Checked = "SSHVisibilityCheck" Unchecked = "SSHVisibilityUnchecked" HorizontalAlignment="Right">
+            <ToggleButton x:Name="SSHVisibilityToggleBtn" Grid.Column="8" Width="25" Height="25" Margin="5,0,0,0" Checked = "SSHVisibilityCheck" Unchecked = "SSHVisibilityUnchecked" HorizontalAlignment="Right">
               <ToggleButton.Style>
                 <Style TargetType="{x:Type ToggleButton}">
                   <Style.Triggers>
@@ -132,13 +115,29 @@
               </ToggleButton.Style>
             </ToggleButton>
 
-            <Button Grid.Column="8" Width="25" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" Command="{StaticResource SearchTextCommand}" >
+            <ToggleButton x:Name="ColumnVisibilityToggleBtn" Grid.Column="9" Width="25" Height="25" Margin="5,0,0,0" Checked = "ColumnVisibilityCheck" Unchecked = "ColumnVisibilityUnchecked" HorizontalAlignment="Right">
+                <ToggleButton.Style>
+                    <Style TargetType="{x:Type ToggleButton}">
+                        <Style.Triggers>
+
+                            <Trigger Property="IsChecked" Value="true">
+                                <Setter Property="Content" Value ="{StaticResource VisibilityImage}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="false">
+                                <Setter Property="Content" Value ="{StaticResource VisibilityOffImage}" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ToggleButton.Style>
+            </ToggleButton>
+
+            <Button Grid.Column="10" Width="25" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" Command="{StaticResource SearchTextCommand}" >
                 <DockPanel>
                     <Image Source="Resources/find.png"/>
                 </DockPanel>
             </Button>
 
-            <Button Grid.Column="10" Width="25" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" Click="Settins_Click" >
+            <Button Grid.Column="11" Width="25" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" Click="Settins_Click" >
                 <DockPanel>
                     <Image Source="Resources/settings.png"/>
                 </DockPanel>
@@ -180,7 +179,7 @@
         </Grid.ColumnDefinitions>
 
       <Label Grid.Column="0" Content="Remote folder" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
-      <TextBox Grid.Column="1" x:Name="SShRemoteFolder" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="Folder on remote host.." Text="/opt/DirectumRX/logs/hrpro-load-rx-sungerowebserver.WebServer.2023-05-20.log" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SShRemoteFolder_TextChanged"/>
+      <TextBox Grid.Column="1" x:Name="SShRemoteFolder" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="Folder on remote host.." Text="/opt/DirectumRX/logs" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SShRemoteFolder_TextChanged"/>
        <Button Grid.Column="2" x:Name="SshConnect" Content="Подключить" Width="75" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" Click="SshConnect_Click" />
 
 

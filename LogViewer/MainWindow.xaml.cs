@@ -183,7 +183,11 @@ namespace LogViewer
 
       logLinesView = CollectionViewSource.GetDefaultView(logLines);
 
-      SSHVisibilityToggleBtn.IsChecked = true;
+      SSHVisibilityToggleBtn.IsChecked = false;
+      SshConfig1.Visibility = Visibility.Collapsed;
+      SshConfig2.Visibility = Visibility.Collapsed;
+      LogsFileNames.Items.Remove(openSshLogFileObject);
+
     }
 
     private void InitTenantFilter()
@@ -271,7 +275,6 @@ namespace LogViewer
       // Clear previous log resources
       if (logWatcher != null)
       {
-        MessageBox.Show("CloseLogFile()");
         logWatcher.Dispose();
         logWatcher = null;
       }
@@ -371,7 +374,23 @@ namespace LogViewer
 
       if (selectedItem.FullPath == OpenSshAction)
       {
-        SelectSshFileToOpen(SShRemoteFolder.Text);
+        if (this.sftpClient != null)
+        {
+          var files = this.sftpClient.ListDirectory(SShRemoteFolder.Text).Where(f => !f.IsDirectory).OrderByDescending(f => f.LastWriteTime);
+          var dialog = new SelectRemoteFileWindow(files);
+          dialog.RemoteFileList.ItemsSource = files;
+          dialog.Owner = this;
+          var result = dialog.ShowDialog();
+          if (result ?? false)
+            SelectSshFileToOpen(dialog.currentFile);
+          else
+            comboBox.SelectedItem = null;
+        }
+        else
+        {
+          comboBox.SelectedItem = null;
+          MessageBox.Show("Need ssh-server connection", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
         return;
       }
 
@@ -718,9 +737,6 @@ namespace LogViewer
       }
       else
       {
-        // Создать фоновый обработчик для нового файла.
-        logHandlers.Add(new LogHandler(fileName, notifyLogo, this.sftpClient));
-
         logFile = new LogFile(fileName, sftpClient);
         LogsFileNames.Items.Insert(LogsFileNames.Items.Count - 1, logFile);
         LogsFileNames.SelectedItem = logFile;
@@ -871,11 +887,29 @@ namespace LogViewer
     }
     #endregion
 
-    private void SshHost_TextChanged(object sender, TextChangedEventArgs e)
     private void UseRegex_Changed()
     {
+      int startLength = this.Filter.Text.Length;
+      if (startLength == this.Filter.Text.Length && this.Filter.IsEnabled)
+      {
+        var tenant = this.TenantFilter.SelectedValue as string;
+        var level = this.LevelFilter.SelectedValue as string;
+        this.SetFilter(this.Filter.Text, tenant, level);
+      }
+    }
+  private void UseRegex_Checked(object sender, RoutedEventArgs e)
+    {
+      this.UseRegex_Changed();
     }
 
+    private void UseRegex_Unchecked(object sender, RoutedEventArgs e)
+    {
+      this.UseRegex_Changed();
+    }
+
+    private void SshHost_TextChanged(object sender, TextChangedEventArgs e)
+    {
+    }
     private void SshPort_TextChanged(object sender, TextChangedEventArgs e)
     {
     }
@@ -891,23 +925,6 @@ namespace LogViewer
     private void SshConnect_Click(object sender, RoutedEventArgs e)
     {
       try
-      int startLength = this.Filter.Text.Length;
-      if (startLength == this.Filter.Text.Length && this.Filter.IsEnabled)
-      {
-        var tenant = this.TenantFilter.SelectedValue as string;
-        var level = this.LevelFilter.SelectedValue as string;
-        this.SetFilter(this.Filter.Text, tenant, level);
-      }
-    }
-    private void UseRegex_Checked(object sender, RoutedEventArgs e)
-    {
-      this.UseRegex_Changed();
-    }
-
-    private void UseRegex_Unchecked(object sender, RoutedEventArgs e)
-    {
-      this.UseRegex_Changed();
-    }
       {
         var host = this.SshHost.Text;
         var port = int.Parse(this.SshPort.Text);
@@ -917,10 +934,11 @@ namespace LogViewer
         SftpClient sftpClient = new SftpClient(host, port, login, password);
         this.sftpClient = sftpClient;
         this.sftpClient.Connect();
+        MessageBox.Show(string.Format("Соединение с {0} установлено.", host), "", MessageBoxButton.OK, MessageBoxImage.Information);
       }
       catch (Exception ex)
       {
-        MessageBox.Show(ex.Message);
+        MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
       }
     }
   }

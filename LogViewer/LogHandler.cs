@@ -33,18 +33,6 @@ namespace LogViewer
       watcher.StartWatch(WatchPeriod);
     }
 
-    public LogHandler(string filePath, Uri icon, SftpClient sftpClient)
-    {
-      this.filePath = filePath;
-      this.icon = icon;
-      //fileName = Path.GetFileName(filePath);
-
-      watcher = new LogWatcher(filePath, sftpClient);
-      watcher.BlockNewLines += OnBlockNewLines;
-      watcher.ReadToEndLine();
-      watcher.StartWatch(WatchPeriod);
-    }
-
     private void OnBlockNewLines(List<string> lines, bool isEndFile, double progress)
     {
       if (watcher.IsStartedWatching)
