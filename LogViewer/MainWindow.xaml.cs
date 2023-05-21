@@ -16,6 +16,8 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Renci.SshNet;
+
 
 namespace LogViewer
 {
@@ -59,11 +61,13 @@ namespace LogViewer
 
     private ScrollViewer gridScrollViewer;
 
-    private string openedFileFullPath;
+    private LogFile openedLogFile;
 
     private readonly string[] hiddenColumns = { "Pid", "Trace", "Tenant" };
 
     private LogFile openSshLogFileObject = new LogFile(OpenSshAction, "Open from ssh-file...");
+
+    private SftpClient sftpClient;
 
     public MainWindow()
     {
@@ -263,6 +267,7 @@ namespace LogViewer
       // Clear previous log resources
       if (logWatcher != null)
       {
+        MessageBox.Show("CloseLogFile()");
         logWatcher.Dispose();
         logWatcher = null;
       }
@@ -277,7 +282,7 @@ namespace LogViewer
       GC.Collect();
     }
 
-    private void OpenLogFile(string fullPath)
+    private void OpenLogFile(LogFile logFile)
     {
       try
       {
@@ -290,11 +295,14 @@ namespace LogViewer
         LevelFilter.IsEnabled = false;
         Filter.Clear();
 
-        this.Title = string.Format($"{WindowTitle} ({fullPath})");
+        this.Title = string.Format($"{WindowTitle} ({logFile.FullPath})");
         LogsGrid.ItemsSource = null;
         filteredLogLines = null;
 
-        logWatcher = new LogWatcher(fullPath);
+        if (logFile.IsLocal)
+          logWatcher = new LogWatcher(logFile.FullPath);
+        else
+          logWatcher = new LogWatcher(logFile.FullPath, logFile.SftpClient);
         logWatcher.BlockNewLines += OnBlockNewLines;
         logWatcher.FileReCreated += OnFileReCreated;
         logWatcher.ReadToEndLine();
@@ -312,7 +320,7 @@ namespace LogViewer
       }
       catch (Exception e)
       {
-        MessageBox.Show($"Error opening log from '{fullPath}'.\n{e.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        MessageBox.Show($"Error opening log from '{logFile.FullPath}'.\n{e.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
       }
       finally
       {
@@ -359,13 +367,14 @@ namespace LogViewer
 
       if (selectedItem.FullPath == OpenSshAction)
       {
+        SelectSshFileToOpen(SShRemoteFolder.Text);
         return;
       }
 
       comboBox.Items.Refresh();
 
-      openedFileFullPath = selectedItem.FullPath;
-      OpenLogFile(openedFileFullPath);
+      openedLogFile = selectedItem;
+      OpenLogFile(selectedItem);
 
       Filter.Text = filterValue;
       LevelFilter.SelectedValue = levelValue;
@@ -416,8 +425,8 @@ namespace LogViewer
       Application.Current.Dispatcher.Invoke(new Action(() =>
       {
         CloseLogFile();
-        if (!string.IsNullOrEmpty(openedFileFullPath))
-          OpenLogFile(openedFileFullPath);
+        if (openedLogFile != null)
+          OpenLogFile(openedLogFile);
       }));
     }
 
@@ -625,7 +634,7 @@ namespace LogViewer
       LogsFileNames.Items.Add(openSshLogFileObject);
     }
 
-  private void SSHVisibilityUnchecked(object sender, RoutedEventArgs e)
+    private void SSHVisibilityUnchecked(object sender, RoutedEventArgs e)
     {
       SshConfig1.Visibility = Visibility.Collapsed;
       SshConfig2.Visibility = Visibility.Collapsed;
@@ -680,6 +689,28 @@ namespace LogViewer
       }
     }
 
+    private void SelectSshFileToOpen(string fileName)
+    {
+      var logFiles = LogsFileNames.Items.Cast<LogFile>().ToList();
+
+      var logFile = logFiles.FirstOrDefault(l => string.Equals(l.FullPath, fileName, StringComparison.InvariantCultureIgnoreCase));
+
+      if (logFile != null)
+      {
+        LogsFileNames.SelectedItem = logFile;
+      }
+      else
+      {
+        // Создать фоновый обработчик для нового файла.
+        logHandlers.Add(new LogHandler(fileName, notifyLogo, this.sftpClient));
+
+        logFile = new LogFile(fileName, sftpClient);
+        LogsFileNames.Items.Insert(LogsFileNames.Items.Count - 1, logFile);
+        LogsFileNames.SelectedItem = logFile;
+      }
+    }
+
+
     private ScrollViewer GetScrollViewer(UIElement element)
     {
       if (element == null)
@@ -722,12 +753,18 @@ namespace LogViewer
         switch (e.Key)
         {
           case Key.Left:
-            if (invertForRTL) scrollViewer.LineRight(); else scrollViewer.LineLeft();
+            if (invertForRTL)
+              scrollViewer.LineRight();
+            else
+              scrollViewer.LineLeft();
             e.Handled = true;
             break;
 
           case Key.Right:
-            if (invertForRTL) scrollViewer.LineLeft(); else scrollViewer.LineRight();
+            if (invertForRTL)
+              scrollViewer.LineLeft();
+            else
+              scrollViewer.LineRight();
             e.Handled = true;
             break;
 
@@ -772,7 +809,8 @@ namespace LogViewer
               if (LogsGrid.Items.Count > 0)
                 LogsGrid.SelectedItem = LogsGrid.Items[0];
             }
-            else scrollViewer.ScrollToLeftEnd();
+            else
+              scrollViewer.ScrollToLeftEnd();
             e.Handled = true;
             break;
 
@@ -784,7 +822,8 @@ namespace LogViewer
               if (LogsGrid.Items.Count > 0)
                 LogsGrid.SelectedItem = LogsGrid.Items[LogsGrid.Items.Count - 1];
             }
-            else scrollViewer.ScrollToRightEnd();
+            else
+              scrollViewer.ScrollToRightEnd();
             e.Handled = true;
             break;
         }
@@ -815,5 +854,39 @@ namespace LogViewer
     }
     #endregion
 
+    private void SshHost_TextChanged(object sender, TextChangedEventArgs e)
+    {
+    }
+
+    private void SshPort_TextChanged(object sender, TextChangedEventArgs e)
+    {
+    }
+
+    private void SshLogin_TextChanged(object sender, TextChangedEventArgs e)
+    {
+    }
+
+    private void SShRemoteFolder_TextChanged(object sender, TextChangedEventArgs e)
+    {
+    }
+
+    private void SshConnect_Click(object sender, RoutedEventArgs e)
+    {
+      try
+      {
+        var host = this.SshHost.Text;
+        var port = int.Parse(this.SshPort.Text);
+        var login = this.SshLogin.Text;
+        var password = this.SshPassword.Password;
+        var remoteDirectory = this.SShRemoteFolder.Text;
+        SftpClient sftpClient = new SftpClient(host, port, login, password);
+        this.sftpClient = sftpClient;
+        this.sftpClient.Connect();
+      }
+      catch (Exception ex)
+      {
+        MessageBox.Show(ex.Message);
+      }
+    }
   }
 }

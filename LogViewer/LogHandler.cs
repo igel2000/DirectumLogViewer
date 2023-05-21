@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using LogReader;
 using Microsoft.Toolkit.Uwp.Notifications;
+using Renci.SshNet;
 
 namespace LogViewer
 {
@@ -27,6 +28,18 @@ namespace LogViewer
       fileName = Path.GetFileName(filePath);
 
       watcher = new LogWatcher(filePath);
+      watcher.BlockNewLines += OnBlockNewLines;
+      watcher.ReadToEndLine();
+      watcher.StartWatch(WatchPeriod);
+    }
+
+    public LogHandler(string filePath, Uri icon, SftpClient sftpClient)
+    {
+      this.filePath = filePath;
+      this.icon = icon;
+      //fileName = Path.GetFileName(filePath);
+
+      watcher = new LogWatcher(filePath, sftpClient);
       watcher.BlockNewLines += OnBlockNewLines;
       watcher.ReadToEndLine();
       watcher.StartWatch(WatchPeriod);
