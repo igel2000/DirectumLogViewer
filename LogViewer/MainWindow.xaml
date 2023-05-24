@@ -324,8 +324,9 @@
 
 
         <tb:TaskbarIcon Visibility="Visible" 
-      IconSource="Resources/horse_icon.ico" 
-      ToolTipText="Json Log Viewer"
+      IconSource="Resources/horse_icon.ico"
+                        x:Name="TrayInfo"
+      ToolTipText="Directum Log Viewer"
       MenuActivation="RightClick"
       PopupActivation="RightClick" TrayLeftMouseUp="TaskbarIcon_TrayLeftMouseUp">
             <tb:TaskbarIcon.ContextMenu>
