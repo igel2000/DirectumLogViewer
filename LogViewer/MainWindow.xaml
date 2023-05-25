@@ -148,7 +148,9 @@
         <Grid Grid.Row="1" VerticalAlignment="Top" Margin="0,2,0,0" x:Name="SshConfig1">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="auto" />
             <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="auto" />
             <ColumnDefinition Width="auto" />
             <ColumnDefinition Width="auto" />
             <ColumnDefinition Width="auto" />
@@ -157,35 +159,26 @@
             <ColumnDefinition Width="auto" />
           </Grid.ColumnDefinitions>
 
-          <Label Grid.Column="0" Content="Host" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
-          <TextBox Grid.Column="1" x:Name="SshHost" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="Remote host name or ip..." Text="rx.load.hrpro" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshHost_TextChanged"/>
+          <ComboBox x:Name="Hosts" Grid.Column="0" ItemsSource="{Binding}" HorizontalAlignment="Left"  VerticalAlignment="Center" Width="200" Height="25" Margin="0,0,0,0" FontSize="14" DisplayMemberPath="" SelectionChanged="Hosts_SelectionChanged"/>
 
-          <Label Grid.Column="2" Content="Port" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
-          <TextBox Grid.Column="3" x:Name="SshPort" HorizontalAlignment="Left" Style="{StaticResource placeHolder}" Tag="Port.." Text="22" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshPort_TextChanged"/>
+          <Label Grid.Column="1" Content="Host" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
+          <TextBox Grid.Column="2" x:Name="SshHost" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="server:/folder" Text="rx.load.hrpro" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshHost_TextChanged"/>
 
-          <Label Grid.Column="4" Content="Login" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
-      <TextBox Grid.Column="5" x:Name="SshLogin" HorizontalAlignment="Left" Style="{StaticResource placeHolder}" Tag="login.." Text="vm-operator" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshLogin_TextChanged"/>
+          <Label Grid.Column="3" Content="Port" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
+          <TextBox Grid.Column="4" x:Name="SshPort" HorizontalAlignment="Left" Style="{StaticResource placeHolder}" Tag="Port.." Text="22" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshPort_TextChanged"/>
 
-      <Label Grid.Column="6" Content="Password" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
-          <PasswordBox Grid.Column="7" x:Name="SshPassword" HorizontalAlignment="Left" Tag="password.." VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0"/>
+          <Label Grid.Column="5" Content="Login" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
+          <TextBox Grid.Column="6" x:Name="SshLogin" HorizontalAlignment="Left" Style="{StaticResource placeHolder}" Tag="login.." Text="vm-operator" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshLogin_TextChanged"/>
 
-         </Grid>
+          <Label Grid.Column="7" Content="Password" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
+          <PasswordBox Grid.Column="8" x:Name="SshPassword" HorizontalAlignment="Left" Tag="password.." VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0"/>
 
-        <Grid Grid.Row="2" VerticalAlignment="Top" Margin="0,2,0,0"  x:Name="SshConfig2">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="auto" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="auto" />
-        </Grid.ColumnDefinitions>
+          <Button Grid.Column="9" x:Name="SshConnect" Content="Подключить" Width="75" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" Click="SshConnect_Click" />
 
-      <Label Grid.Column="0" Content="Remote folder" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
-      <TextBox Grid.Column="1" x:Name="SShRemoteFolder" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="Folder on remote host.." Text="/opt/DirectumRX/logs" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SShRemoteFolder_TextChanged"/>
-       <Button Grid.Column="2" x:Name="SshConnect" Content="Подключить" Width="75" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" Click="SshConnect_Click" />
+        </Grid>
 
-
-    </Grid>
-
-        <DataGrid x:Name="LogsGrid" Grid.Row="3" AutoGenerateColumns="False" HorizontalGridLinesBrush="#FFC7C7C7" GridLinesVisibility="Horizontal" Margin="0,0,0,0" SelectionMode="Extended" RowHeight="20" SelectionChanged="LogsGrid_SelectionChanged" CanUserAddRows="false" CanUserDeleteRows="False" SelectionUnit="FullRow" >
+    
+    <DataGrid x:Name="LogsGrid" Grid.Row="3" AutoGenerateColumns="False" HorizontalGridLinesBrush="#FFC7C7C7" GridLinesVisibility="Horizontal" Margin="0,0,0,0" SelectionMode="Extended" RowHeight="20" SelectionChanged="LogsGrid_SelectionChanged" CanUserAddRows="false" CanUserDeleteRows="False" SelectionUnit="FullRow" >
 
                 <DataGrid.CellStyle>
                     <Style TargetType="{x:Type DataGridCell}">
@@ -320,9 +313,6 @@
             </TabItem>
         </TabControl>
 
-
-
-
         <tb:TaskbarIcon Visibility="Visible" 
       IconSource="Resources/horse_icon.ico"
                         x:Name="TrayInfo"
@@ -338,10 +328,5 @@
         </tb:TaskbarIcon>
 
     </Grid>
-
-
-
-
-
 
 </Window>

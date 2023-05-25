@@ -37,6 +37,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LogReader\LogReader.csproj" />
+    <ProjectReference Include="..\SshConfigParser\SshConfigParser.csproj" />
   </ItemGroup>
 
   <ItemGroup>

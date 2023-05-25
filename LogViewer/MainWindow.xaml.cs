@@ -18,6 +18,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Renci.SshNet;
 using System.Text.RegularExpressions;
+using SshConfigParser;
 
 
 namespace LogViewer
@@ -70,6 +71,8 @@ namespace LogViewer
 
     private SftpClient sftpClient;
 
+    private SshConfigParser.SshConfig sshConfig;
+
     public MainWindow()
     {
       InitializeComponent();
@@ -83,6 +86,9 @@ namespace LogViewer
         Application.Current.Shutdown();
         return;
       }
+
+      this.sshConfig = SshConfig.ParseFile(@"C:\Users\makarov_iv\.ssh\config");
+
 
       notifyLogo = GetNotifyLogo();
 
@@ -185,8 +191,14 @@ namespace LogViewer
 
       SSHVisibilityToggleBtn.IsChecked = false;
       SshConfig1.Visibility = Visibility.Collapsed;
-      SshConfig2.Visibility = Visibility.Collapsed;
       LogsFileNames.Items.Remove(openSshLogFileObject);
+
+      var sshConfig = SshConfig.ParseFile(@"C:\Users\makarov_iv\.ssh\config");
+      var hosts = sshConfig.FindHosts();
+      Hosts.Items.Add("Ввести параметры вручную");
+      foreach (var h in hosts)
+        Hosts.Items.Add(h);
+
 
     }
 
@@ -382,7 +394,11 @@ namespace LogViewer
       {
         if (this.sftpClient != null)
         {
-          var files = this.sftpClient.ListDirectory(SShRemoteFolder.Text).Where(f => !f.IsDirectory).OrderByDescending(f => f.LastWriteTime);
+          var remoteFolder = string.Empty;
+          if (SshHost.Text.Contains(':'))
+            remoteFolder = SshHost.Text.Split(':')[1];
+          MessageBox.Show(remoteFolder);
+          var files = this.sftpClient.ListDirectory(remoteFolder).Where(f => !f.IsDirectory).OrderByDescending(f => f.LastWriteTime);
           var dialog = new SelectRemoteFileWindow(files);
           dialog.RemoteFileList.ItemsSource = files;
           dialog.Owner = this;
@@ -520,9 +536,12 @@ namespace LogViewer
 
     protected override void OnClosing(CancelEventArgs e)
     {
-      e.Cancel = true;
-      this.Hide();
-      base.OnClosing(e);
+      if (SettingsWindow.CloseToTray)
+      {
+        e.Cancel = true;
+        this.Hide();
+        base.OnClosing(e);
+      }
     }
 
     private void TaskbarIcon_TrayLeftMouseUp(object sender, RoutedEventArgs e)
@@ -687,14 +706,12 @@ namespace LogViewer
     private void SSHVisibilityCheck(object sender, RoutedEventArgs e)
     {
       SshConfig1.Visibility = Visibility.Visible;
-      SshConfig2.Visibility = Visibility.Visible;
       LogsFileNames.Items.Add(openSshLogFileObject);
     }
 
     private void SSHVisibilityUnchecked(object sender, RoutedEventArgs e)
     {
       SshConfig1.Visibility = Visibility.Collapsed;
-      SshConfig2.Visibility = Visibility.Collapsed;
       LogsFileNames.Items.Remove(openSshLogFileObject);
     }
 
@@ -919,7 +936,7 @@ namespace LogViewer
         this.SetFilter(this.Filter.Text, tenant, level);
       }
     }
-  private void UseRegex_Checked(object sender, RoutedEventArgs e)
+    private void UseRegex_Checked(object sender, RoutedEventArgs e)
     {
       this.UseRegex_Changed();
     }
@@ -940,19 +957,14 @@ namespace LogViewer
     {
     }
 
-    private void SShRemoteFolder_TextChanged(object sender, TextChangedEventArgs e)
-    {
-    }
-
     private void SshConnect_Click(object sender, RoutedEventArgs e)
     {
       try
       {
-        var host = this.SshHost.Text;
+        var host = this.SshHost.Text.Split(':')[0];
         var port = int.Parse(this.SshPort.Text);
         var login = this.SshLogin.Text;
         var password = this.SshPassword.Password;
-        var remoteDirectory = this.SShRemoteFolder.Text;
         SftpClient sftpClient = new SftpClient(host, port, login, password);
         this.sftpClient = sftpClient;
         this.sftpClient.Connect();
@@ -961,6 +973,42 @@ namespace LogViewer
       catch (Exception ex)
       {
         MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+      }
+    }
+
+    private void Hosts_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+      var comboBox = sender as ComboBox;
+
+      string selectedItem = comboBox.SelectedItem as string;
+
+      if (selectedItem == null)
+      {
+        this.TrayInfo.ToolTipText = this.SetToolTipText(string.Empty);
+        return;
+      }
+
+      if (selectedItem == "Ввести параметры вручную")
+      {
+        this.SshHost.IsEnabled = true;
+        this.SshHost.Text = "";
+        this.SshPort.IsEnabled = true;
+        this.SshPort.Text = "";
+        this.SshLogin.IsEnabled = true;
+        this.SshLogin.Text = "";
+        this.SshPassword.Password = "";
+      }
+      else
+      {
+        var hostInfo = this.sshConfig.Compute(selectedItem);
+
+        this.SshHost.IsEnabled = false;
+        this.SshHost.Text = string.Format("{0}@{1}", hostInfo.User, hostInfo.HostName);
+        this.SshPort.IsEnabled = false;
+        this.SshPort.Text = hostInfo.Port;
+        this.SshLogin.IsEnabled = false;
+        this.SshLogin.Text = hostInfo.User;
+        this.SshPassword.Password = "";
       }
     }
   }
