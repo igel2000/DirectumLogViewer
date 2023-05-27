@@ -71,6 +71,7 @@ namespace LogViewer
     private const string HandSshAction = "Ввести параметры вручную";
     private SftpClient sftpClient;
     private SshConfig sshConfig;
+    private readonly List<SshHost> hostList = new List<SshHost>();
 
     public MainWindow()
     {
@@ -195,11 +196,10 @@ namespace LogViewer
       SshConfig1.Visibility = Visibility.Collapsed;
       LogsFileNames.Items.Remove(openSshLogFileObject);
 
-      Hosts.Items.Add(HandSshAction);
-      Hosts.SelectedItem = HandSshAction;
+      Hosts.Items.Add(new SshHost() { Host = HandSshAction });
       var hosts = this.sshConfig.FindHosts();
-      foreach (var h in hosts)
-        Hosts.Items.Add(h);
+      foreach (var host in hosts)
+        Hosts.Items.Add(this.sshConfig.Compute(host));
     }
 
     private void InitTenantFilter()
@@ -392,13 +392,15 @@ namespace LogViewer
 
       if (selectedItem.FullPath == OpenSshAction)
       {
-        if (this.sftpClient != null)
+        var sshHost = this.Hosts.SelectedItem as SshHost;
+
+        if (sshHost.sftpClient != null)
         {
           var remoteFolder = this.RemoteFolder.Text;
           try
           {
 
-            var files = this.sftpClient.ListDirectory(remoteFolder).Where(f => !f.IsDirectory).OrderByDescending(f => f.LastWriteTime);
+            var files = sshHost.sftpClient.ListDirectory(remoteFolder).Where(f => !f.IsDirectory).OrderByDescending(f => f.LastWriteTime);
             var dialog = new SelectRemoteFileWindow(files);
             dialog.RemoteFileList.ItemsSource = files;
             dialog.Owner = this;
@@ -410,13 +412,13 @@ namespace LogViewer
           }
           catch (Renci.SshNet.Common.SftpPathNotFoundException)
           {
-            MessageBox.Show(string.Format("Папка {0} на сервере {1} не найдена", remoteFolder, this.sftpClient.ConnectionInfo.Host),
+            MessageBox.Show(string.Format("Папка {0} на сервере {1} не найдена", remoteFolder, sshHost.sftpClient.ConnectionInfo.Host),
                             "Error", MessageBoxButton.OK, MessageBoxImage.Error);
           }
           catch (Exception ex)
           {
             MessageBox.Show(string.Format("Неизвестная ошибка {0} при подключении к папке {1} на сервере {2} не найдена",
-                                          ex.Message, remoteFolder, this.sftpClient.ConnectionInfo.Host),
+                                          ex.Message, remoteFolder, sshHost.sftpClient.ConnectionInfo.Host),
                             "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             MessageBox.Show(ex.StackTrace);
           }
@@ -790,7 +792,8 @@ namespace LogViewer
       }
       else
       {
-        logFile = new LogFile(fileName, sftpClient);
+        var currentSshHost = this.Hosts.SelectedItem as SshHost;
+        logFile = new LogFile(fileName, currentSshHost.sftpClient);
         LogsFileNames.Items.Insert(LogsFileNames.Items.Count - 1, logFile);
         LogsFileNames.SelectedItem = logFile;
       }
@@ -962,20 +965,17 @@ namespace LogViewer
 
     private void SshHost_TextChanged(object sender, TextChangedEventArgs e)
     {
-      this.SshConnectButton.Content = "Connect";
-      this.SshConnectButton.IsEnabled = true;
+      SetSshVisible(sender);
     }
 
     private void SshPort_TextChanged(object sender, TextChangedEventArgs e)
     {
-      this.SshConnectButton.Content = "Connect";
-      this.SshConnectButton.IsEnabled = true;
+      SetSshVisible(sender);
     }
 
     private void SshLogin_TextChanged(object sender, TextChangedEventArgs e)
     {
-      this.SshConnectButton.Content = "Connect";
-      this.SshConnectButton.IsEnabled = true;
+      SetSshVisible(sender);
     }
 
     private void SshConnectButton_Click(object sender, RoutedEventArgs e)
@@ -983,46 +983,35 @@ namespace LogViewer
       try
       {
         ConnectionInfo connectionInfo;
-        string host;
+        var currentSshHost = this.Hosts.SelectedItem as SshHost;
 
-        if (this.Hosts.Text == HandSshAction)
+        if (currentSshHost.Host == HandSshAction)
         {
-          host = this.SshHost.Text;
           var port = int.Parse(this.SshPort.Text);
           var login = this.SshLogin.Text;
           var password = this.SshPassword.Password;
-
           var methods = new List<AuthenticationMethod> { new PasswordAuthenticationMethod(login, password) };
-          connectionInfo = new ConnectionInfo(host, port, login, methods.ToArray());
+          connectionInfo = new ConnectionInfo(this.SshHost.Text, port, login, methods.ToArray());
         }
         else
         {
-          var hostInfo = this.sshConfig.Compute(this.Hosts.Text);
-
-          host = hostInfo.HostName;
-          var port = int.Parse(hostInfo.Port);
-          var login = hostInfo.User;
+          var port = int.Parse(currentSshHost.Port);
+          var login = currentSshHost.User;
           var password = this.SshPassword.Password;
-
-          var identityFile = hostInfo.IdentityFile;
+          var identityFile = currentSshHost.IdentityFile;
           PrivateKeyFile keyFile;
           if (password == "")
             keyFile = new PrivateKeyFile(identityFile);
           else
             keyFile = new PrivateKeyFile(identityFile, password);
           var keyFiles = new[] { keyFile };
-
           var methods = new List<AuthenticationMethod>{ new PrivateKeyAuthenticationMethod(login, keyFiles) };
-
-          connectionInfo = new ConnectionInfo(host, port, login, methods.ToArray());
+          connectionInfo = new ConnectionInfo(currentSshHost.HostName, port, login, methods.ToArray());
         }
-
-        SftpClient sftpClient = new SftpClient(connectionInfo);
-        this.sftpClient = sftpClient;
-        this.sftpClient.Connect();
+        currentSshHost.sftpClient = new SftpClient(connectionInfo);
+        currentSshHost.sftpClient.Connect();
         this.SshConnectButton.Content = "Connected";
         this.SshConnectButton.IsEnabled = false;
-        //MessageBox.Show(string.Format("Соединение с {0} установлено.", host), "", MessageBoxButton.OK, MessageBoxImage.Information);
       }
       catch (Exception ex)
       {
@@ -1033,8 +1022,12 @@ namespace LogViewer
     private void Hosts_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
       var comboBox = sender as ComboBox;
+      if (comboBox == null)
+      {
+        return;
+      }
 
-      string selectedItem = comboBox.SelectedItem as string;
+      var selectedItem = comboBox.SelectedItem as SshHost;
 
       if (selectedItem == null)
       {
@@ -1042,29 +1035,60 @@ namespace LogViewer
         return;
       }
 
-      if (selectedItem == HandSshAction)
+      if (selectedItem.Host == HandSshAction)
       {
-        this.SshHost.IsEnabled = true;
         this.SshHost.Text = "";
-        this.SshPort.IsEnabled = true;
-        this.SshPort.Text = "";
-        this.SshLogin.IsEnabled = true;
-        this.SshLogin.Text = "";
       }
       else
       {
-        var hostInfo = this.sshConfig.Compute(selectedItem);
-
-        this.SshHost.IsEnabled = false;
-        this.SshHost.Text = hostInfo.HostName;
-        this.SshPort.IsEnabled = false;
-        this.SshPort.Text = hostInfo.Port;
-        this.SshLogin.IsEnabled = false;
-        this.SshLogin.Text = hostInfo.User;
+        this.SshHost.Text = selectedItem.HostName;
+        this.SshPort.Text = selectedItem.Port;
+        this.SshLogin.Text = selectedItem.User;
       }
-      this.SshConnectButton.Content = "Connect";
-      this.SshConnectButton.IsEnabled = true;
 
+      SetSshVisible(sender);
+    }
+
+    private void SetSshVisible(object sender)
+    {
+      var comboBox = sender as ComboBox;
+      if (comboBox == null)
+      {
+        return;
+      }
+
+      var selectedItem = comboBox.SelectedItem as SshHost;
+
+      if (selectedItem == null)
+      {
+        this.TrayInfo.ToolTipText = this.SetToolTipText(string.Empty);
+        return;
+      }
+
+      if (selectedItem.Host == HandSshAction)
+      {
+        this.SshHost.IsEnabled = true;
+        this.SshPort.IsEnabled = true;
+        this.SshLogin.IsEnabled = true;
+        this.SshConnectButton.Content = "Connect";
+        this.SshConnectButton.IsEnabled = true;
+      }
+      else
+      {
+        this.SshHost.IsEnabled = false;
+        this.SshPort.IsEnabled = false;
+        this.SshLogin.IsEnabled = false;
+        if (selectedItem.sftpClient != null && selectedItem.sftpClient.IsConnected)
+        {
+          this.SshConnectButton.Content = "Connected";
+          this.SshConnectButton.IsEnabled = false;
+        }
+        else
+        {
+          this.SshConnectButton.Content = "Connect";
+          this.SshConnectButton.IsEnabled = true;
+        }
+      }
     }
   }
 }

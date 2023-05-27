@@ -161,9 +161,11 @@
             <ColumnDefinition Width="auto" />
           </Grid.ColumnDefinitions>
 
-          <ComboBox x:Name="Hosts" Grid.Column="0" ItemsSource="{Binding}" HorizontalAlignment="Left"  VerticalAlignment="Center" Width="200" Height="25" Margin="0,0,0,0" FontSize="14" DisplayMemberPath="" SelectionChanged="Hosts_SelectionChanged"/>
+          <ComboBox x:Name="Hosts" Grid.Column="0" DisplayMemberPath="Host" ItemsSource="{Binding}" SelectionChanged="Hosts_SelectionChanged"
+                    HorizontalAlignment="Left"  VerticalAlignment="Center" Width="200" Height="25" Margin="0,0,0,0" FontSize="14"/>
 
-          <Button Grid.Column="1" x:Name="SshConnectButton" Content="Connect" Width="75" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" Click="SshConnectButton_Click" />
+          <Button Grid.Column="1" x:Name="SshConnectButton" Content="Connect"  Click="SshConnectButton_Click"
+                  Width="75" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" />
 
           <Label Grid.Column="2" Content="Host" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
           <TextBox Grid.Column="3" x:Name="SshHost" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="server" Text="rx.load.hrpro" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshHost_TextChanged"/>

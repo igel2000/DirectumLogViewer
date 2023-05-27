@@ -2,11 +2,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Renci.SshNet;
 
 namespace SshConfigParser
 {
   public class SshHost
   {
+
+    public SftpClient? sftpClient;
 
     /// <summary>
     /// Identity file for the host.
