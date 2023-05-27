@@ -168,20 +168,29 @@
                   Width="75" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" />
 
           <Label Grid.Column="2" Content="Host" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
-          <TextBox Grid.Column="3" x:Name="SshHost" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="server" Text="rx.load.hrpro" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshHost_TextChanged"/>
-
+          <TextBox Grid.Column="3" x:Name="SshHost" Text="rx.load.hrpro" Tag="server"  TextChanged="SshHost_TextChanged"
+                   HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" TextWrapping="Wrap" VerticalAlignment="Center"
+                   Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0"/>
 
           <Label Grid.Column="4" Content="RemoteFolder" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
-          <TextBox Grid.Column="5" x:Name="RemoteFolder" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="remote folder" Text="/opt/DirectumRX/logs" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshHost_TextChanged"/>
+          <TextBox Grid.Column="5" x:Name="RemoteFolder" Text="" Tag="remote folder"  TextChanged="SshHost_TextChanged"
+                   HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" TextWrapping="Wrap"
+                   VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0"/>
 
           <Label Grid.Column="6" Content="Port" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
-          <TextBox Grid.Column="7" x:Name="SshPort" HorizontalAlignment="Left" Style="{StaticResource placeHolder}" Tag="Port.." Text="22" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshPort_TextChanged"/>
+          <TextBox Grid.Column="7" x:Name="SshPort" Text="22" Tag="Port.." TextChanged="SshPort_TextChanged"
+                   HorizontalAlignment="Left" Style="{StaticResource placeHolder}" TextWrapping="Wrap" VerticalAlignment="Center"
+                   Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0"/>
 
           <Label Grid.Column="8" Content="Login" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
-          <TextBox Grid.Column="9" x:Name="SshLogin" HorizontalAlignment="Left" Style="{StaticResource placeHolder}" Tag="login.." Text="vm-operator" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshLogin_TextChanged"/>
+          <TextBox Grid.Column="9" x:Name="SshLogin" Text="" Tag="login.."  TextChanged="SshLogin_TextChanged"
+                   HorizontalAlignment="Left" Style="{StaticResource placeHolder}" TextWrapping="Wrap" VerticalAlignment="Center"
+                   Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0"/>
 
           <Label Grid.Column="10" Content="Password" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
-          <PasswordBox Grid.Column="11" x:Name="SshPassword" HorizontalAlignment="Left" Tag="password.." VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0"/>
+          <PasswordBox Grid.Column="11" x:Name="SshPassword" Tag="password.."
+                       HorizontalAlignment="Left" VerticalAlignment="Center" Height="25" Width="150" FontSize="14"
+                       FontStyle="Normal" Margin="5,0,0,0"/>
 
         </Grid>
     

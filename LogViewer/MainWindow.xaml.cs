@@ -69,9 +69,7 @@ namespace LogViewer
 
     private LogFile openSshLogFileObject = new LogFile(OpenSshAction, "Open from ssh-file...");
     private const string HandSshAction = "Ввести параметры вручную";
-    private SftpClient sftpClient;
     private SshConfig sshConfig;
-    private readonly List<SshHost> hostList = new List<SshHost>();
 
     public MainWindow()
     {
@@ -196,7 +194,9 @@ namespace LogViewer
       SshConfig1.Visibility = Visibility.Collapsed;
       LogsFileNames.Items.Remove(openSshLogFileObject);
 
-      Hosts.Items.Add(new SshHost() { Host = HandSshAction });
+      var handSshAction = new SshHost() { Host = HandSshAction };
+      Hosts.Items.Add(handSshAction);
+      Hosts.SelectedItem = handSshAction;
       var hosts = this.sshConfig.FindHosts();
       foreach (var host in hosts)
         Hosts.Items.Add(this.sshConfig.Compute(host));
@@ -719,18 +719,6 @@ namespace LogViewer
       }
     }
 
-    private void SSHVisibilityCheck(object sender, RoutedEventArgs e)
-    {
-      SshConfig1.Visibility = Visibility.Visible;
-      LogsFileNames.Items.Add(openSshLogFileObject);
-    }
-
-    private void SSHVisibilityUnchecked(object sender, RoutedEventArgs e)
-    {
-      SshConfig1.Visibility = Visibility.Collapsed;
-      LogsFileNames.Items.Remove(openSshLogFileObject);
-    }
-
     private void ColumnVisibilityCheck(object sender, RoutedEventArgs e)
     {
       foreach (var column in LogsGrid.Columns.Where(c => hiddenColumns.Contains(c.Header)))
@@ -775,25 +763,6 @@ namespace LogViewer
           logHandlers.Add(new LogHandler(fileName, notifyLogo));
 
         logFile = new LogFile(fileName);
-        LogsFileNames.Items.Insert(LogsFileNames.Items.Count - 1, logFile);
-        LogsFileNames.SelectedItem = logFile;
-      }
-    }
-
-    private void SelectSshFileToOpen(string fileName)
-    {
-      var logFiles = LogsFileNames.Items.Cast<LogFile>().ToList();
-
-      var logFile = logFiles.FirstOrDefault(l => string.Equals(l.FullPath, fileName, StringComparison.InvariantCultureIgnoreCase));
-
-      if (logFile != null)
-      {
-        LogsFileNames.SelectedItem = logFile;
-      }
-      else
-      {
-        var currentSshHost = this.Hosts.SelectedItem as SshHost;
-        logFile = new LogFile(fileName, currentSshHost.sftpClient);
         LogsFileNames.Items.Insert(LogsFileNames.Items.Count - 1, logFile);
         LogsFileNames.SelectedItem = logFile;
       }
@@ -963,19 +932,69 @@ namespace LogViewer
       this.UseRegex_Changed();
     }
 
+    #region ssh-connection
+
+    private void SSHVisibilityCheck(object sender, RoutedEventArgs e)
+    {
+      SshConfig1.Visibility = Visibility.Visible;
+      LogsFileNames.Items.Add(openSshLogFileObject);
+    }
+
+    private void SSHVisibilityUnchecked(object sender, RoutedEventArgs e)
+    {
+      SshConfig1.Visibility = Visibility.Collapsed;
+      LogsFileNames.Items.Remove(openSshLogFileObject);
+    }
+
+    private void SelectSshFileToOpen(string fileName)
+    {
+      var logFiles = LogsFileNames.Items.Cast<LogFile>().ToList();
+
+      var logFile = logFiles.FirstOrDefault(l => string.Equals(l.FullPath, fileName, StringComparison.InvariantCultureIgnoreCase));
+
+      if (logFile != null)
+      {
+        LogsFileNames.SelectedItem = logFile;
+      }
+      else
+      {
+        var currentSshHost = this.Hosts.SelectedItem as SshHost;
+        logFile = new LogFile(fileName, currentSshHost.sftpClient);
+        LogsFileNames.Items.Insert(LogsFileNames.Items.Count - 1, logFile);
+        LogsFileNames.SelectedItem = logFile;
+      }
+    }
+
+    private void SshConnectionParamChanged(object sender, TextChangedEventArgs e)
+    {
+      var comboBox = sender as ComboBox;
+      if (comboBox == null)
+        return;
+
+      var selectedItem = comboBox.SelectedItem as SshHost;
+      if (selectedItem == null)
+        return;
+
+      if (selectedItem.Host == HandSshAction)
+        if (selectedItem.sftpClient != null && selectedItem.sftpClient.IsConnected)
+          selectedItem.sftpClient.Disconnect();
+
+      SetSshVisible(sender);
+    }
+
     private void SshHost_TextChanged(object sender, TextChangedEventArgs e)
     {
-      SetSshVisible(sender);
+      SshConnectionParamChanged(sender, e);
     }
 
     private void SshPort_TextChanged(object sender, TextChangedEventArgs e)
     {
-      SetSshVisible(sender);
+      SshConnectionParamChanged(sender, e);
     }
 
     private void SshLogin_TextChanged(object sender, TextChangedEventArgs e)
     {
-      SetSshVisible(sender);
+      SshConnectionParamChanged(sender, e);
     }
 
     private void SshConnectButton_Click(object sender, RoutedEventArgs e)
@@ -1037,7 +1056,18 @@ namespace LogViewer
 
       if (selectedItem.Host == HandSshAction)
       {
-        this.SshHost.Text = "";
+        if (selectedItem.sftpClient != null && selectedItem.sftpClient.IsConnected)
+        {
+          this.SshHost.Text = selectedItem.sftpClient.ConnectionInfo.Host;
+          this.SshPort.Text = selectedItem.sftpClient.ConnectionInfo.Port.ToString();
+          this.SshLogin.Text = selectedItem.sftpClient.ConnectionInfo.Username;
+        }
+        else
+        {
+          this.SshHost.Text = "";
+          this.SshPort.Text = "22";
+          this.SshLogin.Text = "";
+        }
       }
       else
       {
@@ -1070,25 +1100,24 @@ namespace LogViewer
         this.SshHost.IsEnabled = true;
         this.SshPort.IsEnabled = true;
         this.SshLogin.IsEnabled = true;
-        this.SshConnectButton.Content = "Connect";
-        this.SshConnectButton.IsEnabled = true;
       }
       else
       {
         this.SshHost.IsEnabled = false;
         this.SshPort.IsEnabled = false;
         this.SshLogin.IsEnabled = false;
-        if (selectedItem.sftpClient != null && selectedItem.sftpClient.IsConnected)
-        {
-          this.SshConnectButton.Content = "Connected";
-          this.SshConnectButton.IsEnabled = false;
-        }
-        else
-        {
-          this.SshConnectButton.Content = "Connect";
-          this.SshConnectButton.IsEnabled = true;
-        }
+      }
+      if (selectedItem.sftpClient != null && selectedItem.sftpClient.IsConnected)
+      {
+        this.SshConnectButton.Content = "Connected";
+        this.SshConnectButton.IsEnabled = false;
+      }
+      else
+      {
+        this.SshConnectButton.Content = "Connect";
+        this.SshConnectButton.IsEnabled = true;
       }
     }
+    #endregion
   }
 }
