@@ -24,6 +24,7 @@ namespace LogViewer
   /// </summary>
   public partial class SelectRemoteFileWindow : Window
   {
+    private const string WindowTitle = "Выбор лога";
     private string _lastColemunNameClicked = "Updated";
     private ListSortDirection _lastDirection = ListSortDirection.Ascending;
 
@@ -37,22 +38,41 @@ namespace LogViewer
 
     private ObservableCollection<Renci.SshNet.Sftp.SftpFile> filteredFiles;
 
+    private ScrollViewer gridScrollViewer;
+
     public SelectRemoteFileWindow(IEnumerable<Renci.SshNet.Sftp.SftpFile> files)
     {
-      foreach(var f in files)
+      InitializeComponent();
+
+      DataContext = this;
+
+      InitControls(files);
+    }
+
+    private void Window_ContentRendered(object sender, EventArgs e)
+    {
+      //this.Title = WindowTitle;
+
+      gridScrollViewer = GetScrollViewer(RemoteFileList);
+    }
+
+    private void InitControls(IEnumerable<Renci.SshNet.Sftp.SftpFile> files)
+    {
+      FilterFiles.Text = "";
+
+      foreach (var f in files)
         this.fileLines.Add(f);
       this.filteredFiles = null;
       this.RemoteFileList.ItemsSource = this.fileLines;
       this.RemoteFileList.SelectedValue = this.fileLines.First();
+      this.RemoteFileList.ScrollIntoView(this.fileLines.First());
 
-      //filesView = CollectionViewSource.GetDefaultView(fileLines);
-      InitializeComponent();
+      filesView = CollectionViewSource.GetDefaultView(fileLines);
     }
-
+    /*
     // Header click event
     void RemoteFileListHeader_Click(object sender, RoutedEventArgs e)
     {
-      /*
       GridViewColumnHeader headerClicked = e.OriginalSource as GridViewColumnHeader;
       ListSortDirection direction;
 
@@ -70,49 +90,44 @@ namespace LogViewer
       {
         case "Name":
           if (_lastDirection == ListSortDirection.Ascending)
-            this.RemoteFileList.ItemsSource = files.OrderBy(f => f.Name);
+            this.RemoteFileList.ItemsSource = fileLines.OrderBy(f => f.Name);
           else
-            this.RemoteFileList.ItemsSource = files.OrderByDescending(f => f.Name);
+            this.RemoteFileList.ItemsSource = fileLines.OrderByDescending(f => f.Name);
           _lastColemunNameClicked = columnNameForSort;
           break;
         case "Updated":
           if (_lastDirection == ListSortDirection.Ascending)
-            this.RemoteFileList.ItemsSource = files.OrderBy(f => f.LastWriteTime);
+            this.RemoteFileList.ItemsSource = fileLines.OrderBy(f => f.LastWriteTime);
           else
-            this.RemoteFileList.ItemsSource = files.OrderByDescending(f => f.LastWriteTime);
+            this.RemoteFileList.ItemsSource = fileLines.OrderByDescending(f => f.LastWriteTime);
           _lastColemunNameClicked = columnNameForSort;
           break;
         case "Size":
           if (_lastDirection == ListSortDirection.Ascending)
-            this.RemoteFileList.ItemsSource = files.OrderBy(f => f.Length);
+            this.RemoteFileList.ItemsSource = fileLines.OrderBy(f => f.Length);
           else
-            this.RemoteFileList.ItemsSource = files.OrderByDescending(f => f.Length);
+            this.RemoteFileList.ItemsSource = fileLines.OrderByDescending(f => f.Length);
           _lastColemunNameClicked = columnNameForSort;
           break;
       }
-      */
+      
     }
 
     private void RemoteFileList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+      MessageBox.Show("RemoteFileList_SelectionChanged");
       if (e.RemovedItems.Count > 0)
       {
         var f = (Renci.SshNet.Sftp.SftpFile)e.AddedItems[0];
         this.currentFile = f.FullName;
       }
     }
-
+    */
     private void RemoteFileList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
+      var selectedItem = this.RemoteFileList.SelectedValue as Renci.SshNet.Sftp.SftpFile;
+      this.currentFile = selectedItem.FullName;
       this.DialogResult = true;
-    }
-
-    private void RemoteFileList_KeyDown(object sender, KeyEventArgs e)
-    {
-      if (e.Key == Key.Escape)
-        this.DialogResult = false;
-      if (e.Key == Key.Enter)
-        this.DialogResult = true;
     }
 
     private async void Filter_TextChanged(object sender, TextChangedEventArgs e)
@@ -128,43 +143,79 @@ namespace LogViewer
       }
     }
 
+
+    private bool NeedAddFile(string fileName, string[] searchStrings)
+    {
+      foreach (var s in searchStrings)
+        if (!fileName.Contains(s))
+          return false;
+      return true;
+    }
     private void SetFilter(string text)
     {
-
       if (text != string.Empty && text != "")
       {
-        this.filteredFiles = new ObservableCollection<Renci.SshNet.Sftp.SftpFile>(this.fileLines.Where(l => l.Name.Contains(text)));
+        var searchStrings = text.ToLower().Split(" ");
+        var files = this.fileLines.Where(f => this.NeedAddFile(f.Name.ToLower(), searchStrings));
+        this.filteredFiles = new ObservableCollection<Renci.SshNet.Sftp.SftpFile>(files);
         this.RemoteFileList.ItemsSource = this.filteredFiles;
+        if (this.filteredFiles.Count() > 0)
+          this.RemoteFileList.SelectedValue = this.filteredFiles.First();
+        else
+          this.RemoteFileList.SelectedValue = null;
       }
       else
       {
         this.filteredFiles = null;
         this.RemoteFileList.ItemsSource = this.fileLines;
+        this.RemoteFileList.SelectedValue = this.fileLines.First();
       }
-
-      /*
-      if (logLinesView == null)
-        return;
-
-      var needFilter = !String.IsNullOrEmpty(text) ||
-        (!String.Equals(tenant, All) && !String.IsNullOrEmpty(tenant)) ||
-        (!String.Equals(level, All) && !String.IsNullOrEmpty(level));
-
-      if (needFilter)
-      {
-        filteredLogLines = new ObservableCollection<LogLine>(logLines.Where(l => NeedShowLine(l, text, tenant, level)));
-        LogsGrid.ItemsSource = filteredLogLines;
-      }
-      else
-      {
-        filteredLogLines = null;
-        LogsGrid.ItemsSource = logLines;
-      }
-
-      if (LogsGrid.SelectedItem != null)
-        LogsGrid.ScrollIntoView(LogsGrid.SelectedItem);
-      */
+      if (this.RemoteFileList.SelectedItem != null)
+        this.RemoteFileList.ScrollIntoView(this.RemoteFileList.SelectedItem);
     }
 
+    private ScrollViewer GetScrollViewer(UIElement element)
+    {
+      if (element == null)
+        return null;
+
+      ScrollViewer result = null;
+      for (int i = 0; i < VisualTreeHelper.GetChildrenCount(element) && result == null; i++)
+      {
+        if (VisualTreeHelper.GetChild(element, i) is ScrollViewer)
+          result = (ScrollViewer)(VisualTreeHelper.GetChild(element, i));
+        else
+          result = GetScrollViewer(VisualTreeHelper.GetChild(element, i) as UIElement);
+      }
+
+      return result;
+    }
+
+    private void CommandBinding_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+      var selectedItem = this.RemoteFileList.SelectedValue as Renci.SshNet.Sftp.SftpFile;
+      this.currentFile = selectedItem.FullName;
+      this.DialogResult = true;
+
+    }
+
+    private void RemoteFileList_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+      var u = e.OriginalSource as UIElement;
+      if (e.Key == Key.Enter && u != null)
+      {
+        e.Handled = true;
+        var selectedItem = this.RemoteFileList.SelectedValue as Renci.SshNet.Sftp.SftpFile;
+        this.currentFile = selectedItem.FullName;
+        this.DialogResult = true;
+      }
+      if (e.Key == Key.Escape)
+        this.DialogResult = false;
+      if (e.KeyboardDevice.IsKeyDown(Key.LeftCtrl) && e.Key == Key.L)
+      {
+        FocusManager.SetFocusedElement(this, FilterFiles);
+        Keyboard.Focus(FilterFiles);
+      }
+    }
   }
 }

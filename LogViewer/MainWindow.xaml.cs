@@ -68,10 +68,9 @@ namespace LogViewer
     private readonly string[] hiddenColumns = { "Pid", "Trace", "Tenant" };
 
     private LogFile openSshLogFileObject = new LogFile(OpenSshAction, "Open from ssh-file...");
-
+    private const string HandSshAction = "Ввести параметры вручную";
     private SftpClient sftpClient;
-
-    private SshConfigParser.SshConfig sshConfig;
+    private SshConfig sshConfig;
 
     public MainWindow()
     {
@@ -97,6 +96,8 @@ namespace LogViewer
 
       var files = FindLogs(SettingsWindow.LogsPath);
 
+      this.sshConfig = SshConfig.ParseFile(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", "config"));
+
       InitControls(files);
 
       if (SettingsWindow.UseBackgroundNotification)
@@ -107,7 +108,6 @@ namespace LogViewer
         SetNotificationActivated();
       }
 
-      this.sshConfig = SshConfig.ParseFile(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", "config"));
     }
 
     private void Window_ContentRendered(object sender, EventArgs e)
@@ -195,13 +195,11 @@ namespace LogViewer
       SshConfig1.Visibility = Visibility.Collapsed;
       LogsFileNames.Items.Remove(openSshLogFileObject);
 
-      var sshConfig = SshConfig.ParseFile(@"C:\Users\makarov_iv\.ssh\config");
-      var hosts = sshConfig.FindHosts();
-      Hosts.Items.Add("Ввести параметры вручную");
+      Hosts.Items.Add(HandSshAction);
+      Hosts.SelectedItem = HandSshAction;
+      var hosts = this.sshConfig.FindHosts();
       foreach (var h in hosts)
         Hosts.Items.Add(h);
-
-
     }
 
     private void InitTenantFilter()
@@ -399,6 +397,7 @@ namespace LogViewer
           var remoteFolder = this.RemoteFolder.Text;
           try
           {
+
             var files = this.sftpClient.ListDirectory(remoteFolder).Where(f => !f.IsDirectory).OrderByDescending(f => f.LastWriteTime);
             var dialog = new SelectRemoteFileWindow(files);
             dialog.RemoteFileList.ItemsSource = files;
@@ -419,6 +418,7 @@ namespace LogViewer
             MessageBox.Show(string.Format("Неизвестная ошибка {0} при подключении к папке {1} на сервере {2} не найдена",
                                           ex.Message, remoteFolder, this.sftpClient.ConnectionInfo.Host),
                             "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(ex.StackTrace);
           }
         }
         else
@@ -962,26 +962,30 @@ namespace LogViewer
 
     private void SshHost_TextChanged(object sender, TextChangedEventArgs e)
     {
+      this.SshConnectButton.Content = "Connect";
+      this.SshConnectButton.IsEnabled = true;
     }
 
     private void SshPort_TextChanged(object sender, TextChangedEventArgs e)
     {
+      this.SshConnectButton.Content = "Connect";
+      this.SshConnectButton.IsEnabled = true;
     }
 
     private void SshLogin_TextChanged(object sender, TextChangedEventArgs e)
     {
+      this.SshConnectButton.Content = "Connect";
+      this.SshConnectButton.IsEnabled = true;
     }
 
-    private void SshConnect_Click(object sender, RoutedEventArgs e)
+    private void SshConnectButton_Click(object sender, RoutedEventArgs e)
     {
       try
       {
-        var hosts = this.Hosts.Text;
-
         ConnectionInfo connectionInfo;
         string host;
 
-        if (hosts == null)
+        if (this.Hosts.Text == HandSshAction)
         {
           host = this.SshHost.Text;
           var port = int.Parse(this.SshPort.Text);
@@ -993,7 +997,7 @@ namespace LogViewer
         }
         else
         {
-          var hostInfo = this.sshConfig.Compute(hosts);
+          var hostInfo = this.sshConfig.Compute(this.Hosts.Text);
 
           host = hostInfo.HostName;
           var port = int.Parse(hostInfo.Port);
@@ -1012,10 +1016,13 @@ namespace LogViewer
 
           connectionInfo = new ConnectionInfo(host, port, login, methods.ToArray());
         }
+
         SftpClient sftpClient = new SftpClient(connectionInfo);
         this.sftpClient = sftpClient;
         this.sftpClient.Connect();
-        MessageBox.Show(string.Format("Соединение с {0} установлено.", host), "", MessageBoxButton.OK, MessageBoxImage.Information);
+        this.SshConnectButton.Content = "Connected";
+        this.SshConnectButton.IsEnabled = false;
+        //MessageBox.Show(string.Format("Соединение с {0} установлено.", host), "", MessageBoxButton.OK, MessageBoxImage.Information);
       }
       catch (Exception ex)
       {
@@ -1035,7 +1042,7 @@ namespace LogViewer
         return;
       }
 
-      if (selectedItem == "Ввести параметры вручную")
+      if (selectedItem == HandSshAction)
       {
         this.SshHost.IsEnabled = true;
         this.SshHost.Text = "";
@@ -1050,12 +1057,14 @@ namespace LogViewer
 
         this.SshHost.IsEnabled = false;
         this.SshHost.Text = hostInfo.HostName;
-        //this.SshHost.Text = string.Format("{0}@{1}", hostInfo.User, hostInfo.HostName);
         this.SshPort.IsEnabled = false;
         this.SshPort.Text = hostInfo.Port;
         this.SshLogin.IsEnabled = false;
         this.SshLogin.Text = hostInfo.User;
       }
+      this.SshConnectButton.Content = "Connect";
+      this.SshConnectButton.IsEnabled = true;
+
     }
   }
 }
