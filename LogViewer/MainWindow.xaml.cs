@@ -19,7 +19,8 @@ using System.Windows.Threading;
 using Renci.SshNet;
 using System.Text.RegularExpressions;
 using SshConfigParser;
-
+using Renci.SshNet.Security;
+using Key = System.Windows.Input.Key;
 
 namespace LogViewer
 {
@@ -47,7 +48,6 @@ namespace LogViewer
     private const string IconFileName = "horse.png";
 
     private const int GridUpdatePeriod = 1000;
-
 
     private readonly List<LogHandler> logHandlers = new List<LogHandler>();
 
@@ -87,9 +87,6 @@ namespace LogViewer
         return;
       }
 
-      this.sshConfig = SshConfig.ParseFile(@"C:\Users\makarov_iv\.ssh\config");
-
-
       notifyLogo = GetNotifyLogo();
 
       if (!Directory.Exists(SettingsWindow.LogsPath) && !ShowSettingsWindow())
@@ -100,12 +97,17 @@ namespace LogViewer
 
       var files = FindLogs(SettingsWindow.LogsPath);
 
-      if (files != null)
-        CreateHandlers(files);
-
       InitControls(files);
 
-      SetNotificationActivated();
+      if (SettingsWindow.UseBackgroundNotification)
+      {
+        if (files != null)
+          CreateHandlers(files);
+
+        SetNotificationActivated();
+      }
+
+      this.sshConfig = SshConfig.ParseFile(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", "config"));
     }
 
     private void Window_ContentRendered(object sender, EventArgs e)
@@ -394,19 +396,30 @@ namespace LogViewer
       {
         if (this.sftpClient != null)
         {
-          var remoteFolder = string.Empty;
-          if (SshHost.Text.Contains(':'))
-            remoteFolder = SshHost.Text.Split(':')[1];
-          MessageBox.Show(remoteFolder);
-          var files = this.sftpClient.ListDirectory(remoteFolder).Where(f => !f.IsDirectory).OrderByDescending(f => f.LastWriteTime);
-          var dialog = new SelectRemoteFileWindow(files);
-          dialog.RemoteFileList.ItemsSource = files;
-          dialog.Owner = this;
-          var result = dialog.ShowDialog();
-          if (result ?? false)
-            SelectSshFileToOpen(dialog.currentFile);
-          else
-            comboBox.SelectedItem = null;
+          var remoteFolder = this.RemoteFolder.Text;
+          try
+          {
+            var files = this.sftpClient.ListDirectory(remoteFolder).Where(f => !f.IsDirectory).OrderByDescending(f => f.LastWriteTime);
+            var dialog = new SelectRemoteFileWindow(files);
+            dialog.RemoteFileList.ItemsSource = files;
+            dialog.Owner = this;
+            var result = dialog.ShowDialog();
+            if (result ?? false)
+              SelectSshFileToOpen(dialog.currentFile);
+            else
+              comboBox.SelectedItem = null;
+          }
+          catch (Renci.SshNet.Common.SftpPathNotFoundException)
+          {
+            MessageBox.Show(string.Format("Папка {0} на сервере {1} не найдена", remoteFolder, this.sftpClient.ConnectionInfo.Host),
+                            "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+          }
+          catch (Exception ex)
+          {
+            MessageBox.Show(string.Format("Неизвестная ошибка {0} при подключении к папке {1} на сервере {2} не найдена",
+                                          ex.Message, remoteFolder, this.sftpClient.ConnectionInfo.Host),
+                            "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+          }
         }
         else
         {
@@ -681,6 +694,7 @@ namespace LogViewer
         LogsGrid.ScrollIntoView(line);
       }
     }
+
     private void FilterTenant_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
       var tenant = (sender as ComboBox).SelectedItem as string;
@@ -781,7 +795,6 @@ namespace LogViewer
         LogsFileNames.SelectedItem = logFile;
       }
     }
-
 
     private ScrollViewer GetScrollViewer(UIElement element)
     {
@@ -936,6 +949,7 @@ namespace LogViewer
         this.SetFilter(this.Filter.Text, tenant, level);
       }
     }
+
     private void UseRegex_Checked(object sender, RoutedEventArgs e)
     {
       this.UseRegex_Changed();
@@ -949,6 +963,7 @@ namespace LogViewer
     private void SshHost_TextChanged(object sender, TextChangedEventArgs e)
     {
     }
+
     private void SshPort_TextChanged(object sender, TextChangedEventArgs e)
     {
     }
@@ -961,11 +976,43 @@ namespace LogViewer
     {
       try
       {
-        var host = this.SshHost.Text.Split(':')[0];
-        var port = int.Parse(this.SshPort.Text);
-        var login = this.SshLogin.Text;
-        var password = this.SshPassword.Password;
-        SftpClient sftpClient = new SftpClient(host, port, login, password);
+        var hosts = this.Hosts.Text;
+
+        ConnectionInfo connectionInfo;
+        string host;
+
+        if (hosts == null)
+        {
+          host = this.SshHost.Text;
+          var port = int.Parse(this.SshPort.Text);
+          var login = this.SshLogin.Text;
+          var password = this.SshPassword.Password;
+
+          var methods = new List<AuthenticationMethod> { new PasswordAuthenticationMethod(login, password) };
+          connectionInfo = new ConnectionInfo(host, port, login, methods.ToArray());
+        }
+        else
+        {
+          var hostInfo = this.sshConfig.Compute(hosts);
+
+          host = hostInfo.HostName;
+          var port = int.Parse(hostInfo.Port);
+          var login = hostInfo.User;
+          var password = this.SshPassword.Password;
+
+          var identityFile = hostInfo.IdentityFile;
+          PrivateKeyFile keyFile;
+          if (password == "")
+            keyFile = new PrivateKeyFile(identityFile);
+          else
+            keyFile = new PrivateKeyFile(identityFile, password);
+          var keyFiles = new[] { keyFile };
+
+          var methods = new List<AuthenticationMethod>{ new PrivateKeyAuthenticationMethod(login, keyFiles) };
+
+          connectionInfo = new ConnectionInfo(host, port, login, methods.ToArray());
+        }
+        SftpClient sftpClient = new SftpClient(connectionInfo);
         this.sftpClient = sftpClient;
         this.sftpClient.Connect();
         MessageBox.Show(string.Format("Соединение с {0} установлено.", host), "", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -996,19 +1043,18 @@ namespace LogViewer
         this.SshPort.Text = "";
         this.SshLogin.IsEnabled = true;
         this.SshLogin.Text = "";
-        this.SshPassword.Password = "";
       }
       else
       {
         var hostInfo = this.sshConfig.Compute(selectedItem);
 
         this.SshHost.IsEnabled = false;
-        this.SshHost.Text = string.Format("{0}@{1}", hostInfo.User, hostInfo.HostName);
+        this.SshHost.Text = hostInfo.HostName;
+        //this.SshHost.Text = string.Format("{0}@{1}", hostInfo.User, hostInfo.HostName);
         this.SshPort.IsEnabled = false;
         this.SshPort.Text = hostInfo.Port;
         this.SshLogin.IsEnabled = false;
         this.SshLogin.Text = hostInfo.User;
-        this.SshPassword.Password = "";
       }
     }
   }

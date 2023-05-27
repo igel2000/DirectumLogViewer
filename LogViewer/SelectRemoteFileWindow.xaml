@@ -6,20 +6,75 @@
         xmlns:local="clr-namespace:LogViewer"
         mc:Ignorable="d"
         Title="Select remote file" Height="450" Width="800">
-    <Grid x:Name="FileFrid"  Background="Lavender">
-      <ListView x:Name="RemoteFileList"
-                GridViewColumnHeader.Click="RemoteFileListHeader_Click"
-                KeyDown="RemoteFileList_KeyDown"
-                MouseDoubleClick="RemoteFileList_MouseDoubleClick"
-                SelectionChanged="RemoteFileList_SelectionChanged"
-                SelectionMode="Single">
-        <ListView.View>
-          <GridView x:Name="fileGridView">
-            <GridViewColumn DisplayMemberBinding="{Binding Path=Name}" Width="500">Name</GridViewColumn>
-            <GridViewColumn DisplayMemberBinding="{Binding Path=LastWriteTime}">Updated</GridViewColumn>
-            <GridViewColumn DisplayMemberBinding="{Binding Path=Length}">Size</GridViewColumn>
-          </GridView>
-        </ListView.View>
-      </ListView>
-  </Grid>
+
+
+  <Window.Resources>
+    <Style x:Key="placeHolder" TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type TextBox}">
+            <Grid>
+              <TextBox Text="{Binding Path=Text,
+                                                RelativeSource={RelativeSource TemplatedParent}, 
+                                                Mode=TwoWay,
+                                                UpdateSourceTrigger=PropertyChanged}"
+                                 x:Name="textSource" 
+                                 Background="Transparent" 
+                                 Panel.ZIndex="2" />
+              <TextBox Text="{TemplateBinding Tag}" Background="{TemplateBinding Background}" Panel.ZIndex="1">
+                <TextBox.Style>
+                  <Style TargetType="{x:Type TextBox}">
+                    <Setter Property="Foreground" Value="Transparent"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding Path=Text, Source={x:Reference textSource}}" Value="">
+                        <Setter Property="Foreground" Value="LightGray"/>
+                        <Setter Property="FontStyle" Value="Italic"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBox.Style>
+              </TextBox>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+  </Window.Resources>
+
+
+  <Grid x:Name="FileFrid"  Background="Lavender">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="32" />
+        <RowDefinition Height="auto" />
+      </Grid.RowDefinitions>
+
+      <Grid Grid.Row="0" VerticalAlignment="Top" Margin="0,2,0,0" >
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="auto" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+      <Label Grid.Column="0" Content="Filter" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
+      <TextBox Grid.Column="1" x:Name="Filter" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="server:/folder" Text="rx.load.hrpro" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="Filter_TextChanged"/>
+
+    </Grid>
+
+      <Grid Grid.Row="2" VerticalAlignment="Top" Margin="0,2,0,0" >
+        <ListView x:Name="RemoteFileList"
+                  GridViewColumnHeader.Click="RemoteFileListHeader_Click"
+                  KeyDown="RemoteFileList_KeyDown"
+                  MouseDoubleClick="RemoteFileList_MouseDoubleClick"
+                  SelectionChanged="RemoteFileList_SelectionChanged"
+                  SelectionMode="Single">
+          <ListView.View>
+            <GridView x:Name="fileGridView">
+              <GridViewColumn DisplayMemberBinding="{Binding Path=Name}" Width="500">Name</GridViewColumn>
+              <GridViewColumn DisplayMemberBinding="{Binding Path=LastWriteTime}">Updated</GridViewColumn>
+              <GridViewColumn DisplayMemberBinding="{Binding Path=Length}">Size</GridViewColumn>
+            </GridView>
+          </ListView.View>
+        </ListView>
+      </Grid>
+      
+    </Grid>
 </Window>

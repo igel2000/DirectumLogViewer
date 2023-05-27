@@ -151,6 +151,8 @@
             <ColumnDefinition Width="auto" />
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="auto" />
             <ColumnDefinition Width="auto" />
             <ColumnDefinition Width="auto" />
             <ColumnDefinition Width="auto" />
@@ -162,23 +164,25 @@
           <ComboBox x:Name="Hosts" Grid.Column="0" ItemsSource="{Binding}" HorizontalAlignment="Left"  VerticalAlignment="Center" Width="200" Height="25" Margin="0,0,0,0" FontSize="14" DisplayMemberPath="" SelectionChanged="Hosts_SelectionChanged"/>
 
           <Label Grid.Column="1" Content="Host" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
-          <TextBox Grid.Column="2" x:Name="SshHost" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="server:/folder" Text="rx.load.hrpro" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshHost_TextChanged"/>
+          <TextBox Grid.Column="2" x:Name="SshHost" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="server" Text="rx.load.hrpro" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshHost_TextChanged"/>
 
-          <Label Grid.Column="3" Content="Port" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
-          <TextBox Grid.Column="4" x:Name="SshPort" HorizontalAlignment="Left" Style="{StaticResource placeHolder}" Tag="Port.." Text="22" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshPort_TextChanged"/>
+          <Label Grid.Column="3" Content="RemoteFolder" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
+          <TextBox Grid.Column="4" x:Name="RemoteFolder" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="remote folder" Text="/opt/DirectumRX/logs" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshHost_TextChanged"/>
 
-          <Label Grid.Column="5" Content="Login" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
-          <TextBox Grid.Column="6" x:Name="SshLogin" HorizontalAlignment="Left" Style="{StaticResource placeHolder}" Tag="login.." Text="vm-operator" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshLogin_TextChanged"/>
+          <Label Grid.Column="5" Content="Port" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
+          <TextBox Grid.Column="6" x:Name="SshPort" HorizontalAlignment="Left" Style="{StaticResource placeHolder}" Tag="Port.." Text="22" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshPort_TextChanged"/>
 
-          <Label Grid.Column="7" Content="Password" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
-          <PasswordBox Grid.Column="8" x:Name="SshPassword" HorizontalAlignment="Left" Tag="password.." VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0"/>
+          <Label Grid.Column="7" Content="Login" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
+          <TextBox Grid.Column="8" x:Name="SshLogin" HorizontalAlignment="Left" Style="{StaticResource placeHolder}" Tag="login.." Text="vm-operator" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="SshLogin_TextChanged"/>
 
-          <Button Grid.Column="9" x:Name="SshConnect" Content="Подключить" Width="75" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" Click="SshConnect_Click" />
+          <Label Grid.Column="9" Content="Password" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
+          <PasswordBox Grid.Column="10" x:Name="SshPassword" HorizontalAlignment="Left" Tag="password.." VerticalAlignment="Center" Height="25" Width="150" FontSize="14" FontStyle="Normal" Margin="5,0,0,0"/>
+
+          <Button Grid.Column="11" x:Name="SshConnect" Content="Подключить" Width="75" Height="25" Margin="5,0,0,0" HorizontalAlignment="Right" Click="SshConnect_Click" />
 
         </Grid>
-
     
-    <DataGrid x:Name="LogsGrid" Grid.Row="3" AutoGenerateColumns="False" HorizontalGridLinesBrush="#FFC7C7C7" GridLinesVisibility="Horizontal" Margin="0,0,0,0" SelectionMode="Extended" RowHeight="20" SelectionChanged="LogsGrid_SelectionChanged" CanUserAddRows="false" CanUserDeleteRows="False" SelectionUnit="FullRow" >
+        <DataGrid x:Name="LogsGrid" Grid.Row="3" AutoGenerateColumns="False" HorizontalGridLinesBrush="#FFC7C7C7" GridLinesVisibility="Horizontal" Margin="0,0,0,0" SelectionMode="Extended" RowHeight="20" SelectionChanged="LogsGrid_SelectionChanged" CanUserAddRows="false" CanUserDeleteRows="False" SelectionUnit="FullRow" >
 
                 <DataGrid.CellStyle>
                     <Style TargetType="{x:Type DataGridCell}">
@@ -223,7 +227,6 @@
                 <DataGrid.InputBindings>
                     <KeyBinding Key="C" Modifiers="Control" Command="Copy" />
                 </DataGrid.InputBindings>
-
 
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Time" Binding="{Binding Path=Time, StringFormat='yyyy-MM-dd HH:mm:ss.fff'}" Width="145" IsReadOnly="True" CanUserSort="False"/>
