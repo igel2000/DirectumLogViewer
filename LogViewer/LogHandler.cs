@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using LogReader;
 using Microsoft.Toolkit.Uwp.Notifications;
+using Renci.SshNet;
 
 namespace LogViewer
 {

@@ -1,7 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Timers;
+using Renci.SshNet;
+using Renci.SshNet.Sftp;
 
 namespace LogReader
 {
@@ -26,10 +28,19 @@ namespace LogReader
 
     private const int LineBlockSize = 500;
 
+    private SftpFileStream sftpFileStream;
+
     public LogWatcher(string filePath)
     {
       fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
       streamReader = new StreamReader(fileStream);
+      fileLength = streamReader.BaseStream.Length;
+    }
+
+    public LogWatcher(string filePath, SftpClient sftpClient)
+    {
+      sftpFileStream = sftpClient.Open(filePath, FileMode.Open, FileAccess.Read);
+      streamReader = new StreamReader(sftpFileStream);
       fileLength = streamReader.BaseStream.Length;
     }
 
@@ -99,6 +110,12 @@ namespace LogReader
       {
         fileStream.Dispose();
         fileStream = null;
+      }
+
+      if (sftpFileStream != null)
+      {
+        sftpFileStream.Dispose();
+        sftpFileStream = null;
       }
     }
 

@@ -21,6 +21,8 @@
     <None Remove="Resources\horse.png" />
     <None Remove="Resources\horse_icon.ico" />
     <None Remove="Resources\settings.png" />
+    <None Remove="Resources\sshOff.png" />
+    <None Remove="Resources\sshOn.png" />
     <None Remove="Resources\visibility.png" />
     <None Remove="Resources\visibilityOff.png" />
   </ItemGroup>
@@ -28,12 +30,14 @@
   <ItemGroup>
     <PackageReference Include="Hardcodet.Wpf.TaskbarNotification.Core" Version="2.0.0" />
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
+    <PackageReference Include="SSH.NET" Version="2020.0.2" />
     <PackageReference Include="System.Drawing.Common" Version="7.0.0" />
     <PackageReference Include="WindowsAPICodePack-Shell" Version="1.1.1" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\LogReader\LogReader.csproj" />
+    <ProjectReference Include="..\SshConfigParser\SshConfigParser.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,6 +45,8 @@
     <Resource Include="Resources\horse.png" />
     <Resource Include="Resources\horse_icon.ico" />
     <Resource Include="Resources\settings.png" />
+    <Resource Include="Resources\sshOff.png" />
+    <Resource Include="Resources\sshOn.png" />
     <Resource Include="Resources\visibility.png" />
     <Resource Include="Resources\visibilityOff.png" />
   </ItemGroup>
