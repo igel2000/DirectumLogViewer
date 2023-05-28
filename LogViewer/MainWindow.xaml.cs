@@ -16,7 +16,12 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Renci.SshNet;
 using System.Text.RegularExpressions;
+using SshConfigParser;
+using Renci.SshNet.Security;
+using Key = System.Windows.Input.Key;
+using Microsoft.Win32;
 
 namespace LogViewer
 {
@@ -37,12 +42,13 @@ namespace LogViewer
 
     private const string OpenAction = "OpenAction";
 
+    private const string OpenSshAction = "OpenSshAction";
+
     private const string All = "All";
 
     private const string IconFileName = "horse.png";
 
     private const int GridUpdatePeriod = 1000;
-
 
     private readonly List<LogHandler> logHandlers = new List<LogHandler>();
 
@@ -58,9 +64,15 @@ namespace LogViewer
 
     private ScrollViewer gridScrollViewer;
 
-    private string openedFileFullPath;
+    private LogFile openedLogFile;
 
     private readonly string[] hiddenColumns = { "Pid", "Trace", "Tenant" };
+
+    private LogFile openSshLogFileObject = new LogFile(OpenSshAction, "Open from ssh-file...");
+    private const string HandSshAction = "Ввести параметры вручную";
+    private SshConfig sshConfig;
+    private const string RemoteFolderRegKey = "RemoteFolder";
+    private const string SshButtonStateRegKey = "SshButtonState";
 
     public MainWindow()
     {
@@ -86,12 +98,18 @@ namespace LogViewer
 
       var files = FindLogs(SettingsWindow.LogsPath);
 
-      if (files != null)
-        CreateHandlers(files);
+      this.sshConfig = SshConfig.ParseFile(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", "config"));
 
       InitControls(files);
 
-      SetNotificationActivated();
+      if (SettingsWindow.UseBackgroundNotification)
+      {
+        if (files != null)
+          CreateHandlers(files);
+
+        SetNotificationActivated();
+      }
+
     }
 
     private void Window_ContentRendered(object sender, EventArgs e)
@@ -174,6 +192,25 @@ namespace LogViewer
       InitLevelFilter();
 
       logLinesView = CollectionViewSource.GetDefaultView(logLines);
+
+      var handSshAction = new SshHost() { Host = HandSshAction };
+      Hosts.Items.Add(handSshAction);
+      Hosts.SelectedItem = handSshAction;
+      var hosts = this.sshConfig.FindHosts();
+      foreach (var host in hosts)
+        Hosts.Items.Add(this.sshConfig.Compute(host));
+
+      using RegistryKey key = Registry.CurrentUser.CreateSubKey(SettingsWindow.RegKey);
+
+      this.RemoteFolder.Text = (string)key.GetValue(RemoteFolderRegKey, "");
+
+      var isSshVisible = Convert.ToBoolean(key.GetValue(SshButtonStateRegKey, false));
+      if (isSshVisible)
+        SSHVisibilityToggleBtn.IsChecked = true;
+      else
+        SSHVisibilityToggleBtn.IsChecked = false;
+      key.Close();
+
     }
 
     private void InitTenantFilter()
@@ -275,7 +312,7 @@ namespace LogViewer
       GC.Collect();
     }
 
-    private void OpenLogFile(string fullPath)
+    private void OpenLogFile(LogFile logFile)
     {
       try
       {
@@ -288,11 +325,14 @@ namespace LogViewer
         LevelFilter.IsEnabled = false;
         Filter.Clear();
 
-        this.Title = string.Format($"{WindowTitle} ({fullPath})");
+        this.Title = string.Format($"{WindowTitle} ({logFile.FullPath})");
         LogsGrid.ItemsSource = null;
         filteredLogLines = null;
 
-        logWatcher = new LogWatcher(fullPath);
+        if (logFile.IsLocal)
+          logWatcher = new LogWatcher(logFile.FullPath);
+        else
+          logWatcher = new LogWatcher(logFile.FullPath, logFile.SftpClient);
         logWatcher.BlockNewLines += OnBlockNewLines;
         logWatcher.FileReCreated += OnFileReCreated;
         logWatcher.ReadToEndLine();
@@ -310,7 +350,7 @@ namespace LogViewer
       }
       catch (Exception e)
       {
-        MessageBox.Show($"Error opening log from '{fullPath}'.\n{e.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        MessageBox.Show($"Error opening log from '{logFile.FullPath}'.\n{e.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
       }
       finally
       {
@@ -336,7 +376,10 @@ namespace LogViewer
 
       LogFile selectedItem = comboBox.SelectedItem as LogFile;
       if (selectedItem == null)
+      {
+        this.TrayInfo.ToolTipText = this.SetToolTipText(string.Empty);
         return;
+      }
 
       if (selectedItem.FullPath == OpenAction)
       {
@@ -350,18 +393,71 @@ namespace LogViewer
         if (CommonFileDialogResult.Ok == dialog.ShowDialog())
           SelectFileToOpen(dialog.FileName);
         else
+        {
           comboBox.SelectedItem = null;
+          this.TrayInfo.ToolTipText = this.SetToolTipText(string.Empty);
+        }
 
+        return;
+      }
+
+      if (selectedItem.FullPath == OpenSshAction)
+      {
+        var sshHost = this.Hosts.SelectedItem as SshHost;
+
+        if (sshHost.sftpClient != null)
+        {
+          var remoteFolder = this.RemoteFolder.Text;
+          try
+          {
+
+            var files = sshHost.sftpClient.ListDirectory(remoteFolder).Where(f => !f.IsDirectory).OrderByDescending(f => f.LastWriteTime);
+            var dialog = new SelectRemoteFileWindow(files);
+            dialog.RemoteFileList.ItemsSource = files;
+            dialog.Owner = this;
+            var result = dialog.ShowDialog();
+            if (result ?? false)
+              SelectSshFileToOpen(dialog.currentFile);
+            else
+              comboBox.SelectedItem = null;
+          }
+          catch (Renci.SshNet.Common.SftpPathNotFoundException)
+          {
+            MessageBox.Show(string.Format("Папка {0} на сервере {1} не найдена", remoteFolder, sshHost.sftpClient.ConnectionInfo.Host),
+                            "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+          }
+          catch (Exception ex)
+          {
+            MessageBox.Show(string.Format("Неизвестная ошибка {0} при подключении к папке {1} на сервере {2} не найдена",
+                                          ex.Message, remoteFolder, sshHost.sftpClient.ConnectionInfo.Host),
+                            "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(ex.StackTrace);
+          }
+        }
+        else
+        {
+          comboBox.SelectedItem = null;
+          MessageBox.Show("Need ssh-server connection", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
         return;
       }
 
       comboBox.Items.Refresh();
 
-      openedFileFullPath = selectedItem.FullPath;
-      OpenLogFile(openedFileFullPath);
+      openedLogFile = selectedItem;
+      OpenLogFile(selectedItem);
 
       Filter.Text = filterValue;
+      this.TrayInfo.ToolTipText = this.SetToolTipText(selectedItem.Name);
       LevelFilter.SelectedValue = levelValue;
+    }
+
+    private string SetToolTipText(string filename)
+    {
+      if (filename == string.Empty)
+        return "Directum Log Viewer";
+      else
+        return string.Format("Directum Log Viewer - {0}", filename);
     }
 
     private void OnBlockNewLines(List<string> lines, bool isEndFile, double progress)
@@ -409,8 +505,8 @@ namespace LogViewer
       Application.Current.Dispatcher.Invoke(new Action(() =>
       {
         CloseLogFile();
-        if (!string.IsNullOrEmpty(openedFileFullPath))
-          OpenLogFile(openedFileFullPath);
+        if (openedLogFile != null)
+          OpenLogFile(openedLogFile);
       }));
     }
 
@@ -462,6 +558,16 @@ namespace LogViewer
     private void Exit_Click(object sender, RoutedEventArgs e)
     {
       Application.Current.Shutdown();
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+      if (SettingsWindow.CloseToTray)
+      {
+        e.Cancel = true;
+        this.Hide();
+        base.OnClosing(e);
+      }
     }
 
     private void TaskbarIcon_TrayLeftMouseUp(object sender, RoutedEventArgs e)
@@ -601,6 +707,7 @@ namespace LogViewer
         LogsGrid.ScrollIntoView(line);
       }
     }
+
     private void FilterTenant_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
       var tenant = (sender as ComboBox).SelectedItem as string;
@@ -622,6 +729,7 @@ namespace LogViewer
         SetFilter(Filter.Text, tenant, level);
       }
     }
+
     private void ColumnVisibilityCheck(object sender, RoutedEventArgs e)
     {
       foreach (var column in LogsGrid.Columns.Where(c => hiddenColumns.Contains(c.Header)))
@@ -713,12 +821,18 @@ namespace LogViewer
         switch (e.Key)
         {
           case Key.Left:
-            if (invertForRTL) scrollViewer.LineRight(); else scrollViewer.LineLeft();
+            if (invertForRTL)
+              scrollViewer.LineRight();
+            else
+              scrollViewer.LineLeft();
             e.Handled = true;
             break;
 
           case Key.Right:
-            if (invertForRTL) scrollViewer.LineLeft(); else scrollViewer.LineRight();
+            if (invertForRTL)
+              scrollViewer.LineLeft();
+            else
+              scrollViewer.LineRight();
             e.Handled = true;
             break;
 
@@ -763,7 +877,8 @@ namespace LogViewer
               if (LogsGrid.Items.Count > 0)
                 LogsGrid.SelectedItem = LogsGrid.Items[0];
             }
-            else scrollViewer.ScrollToLeftEnd();
+            else
+              scrollViewer.ScrollToLeftEnd();
             e.Handled = true;
             break;
 
@@ -775,7 +890,8 @@ namespace LogViewer
               if (LogsGrid.Items.Count > 0)
                 LogsGrid.SelectedItem = LogsGrid.Items[LogsGrid.Items.Count - 1];
             }
-            else scrollViewer.ScrollToRightEnd();
+            else
+              scrollViewer.ScrollToRightEnd();
             e.Handled = true;
             break;
         }
@@ -816,6 +932,7 @@ namespace LogViewer
         this.SetFilter(this.Filter.Text, tenant, level);
       }
     }
+
     private void UseRegex_Checked(object sender, RoutedEventArgs e)
     {
       this.UseRegex_Changed();
@@ -824,6 +941,207 @@ namespace LogViewer
     private void UseRegex_Unchecked(object sender, RoutedEventArgs e)
     {
       this.UseRegex_Changed();
+    }
+
+    #region ssh-connection
+
+    private void SSHVisibilityCheck(object sender, RoutedEventArgs e)
+    {
+      SshConfig1.Visibility = Visibility.Visible;
+      LogsFileNames.Items.Add(openSshLogFileObject);
+      using RegistryKey key = Registry.CurrentUser.CreateSubKey(SettingsWindow.RegKey);
+      key.SetValue(SshButtonStateRegKey, true);
+      key.Close();
+    }
+
+    private void SSHVisibilityUnchecked(object sender, RoutedEventArgs e)
+    {
+      SshConfig1.Visibility = Visibility.Collapsed;
+      LogsFileNames.Items.Remove(openSshLogFileObject);
+      using RegistryKey key = Registry.CurrentUser.CreateSubKey(SettingsWindow.RegKey);
+      key.SetValue(SshButtonStateRegKey, false);
+      key.Close();
+    }
+
+    private void SelectSshFileToOpen(string fileName)
+    {
+      var logFiles = LogsFileNames.Items.Cast<LogFile>().ToList();
+
+      var logFile = logFiles.FirstOrDefault(l => string.Equals(l.FullPath, fileName, StringComparison.InvariantCultureIgnoreCase));
+
+      if (logFile != null)
+      {
+        LogsFileNames.SelectedItem = logFile;
+      }
+      else
+      {
+        var currentSshHost = this.Hosts.SelectedItem as SshHost;
+        logFile = new LogFile(fileName, currentSshHost.sftpClient);
+        LogsFileNames.Items.Insert(LogsFileNames.Items.Count - 1, logFile);
+        LogsFileNames.SelectedItem = logFile;
+      }
+    }
+
+    private void SshConnectionParamChanged(object sender, TextChangedEventArgs e)
+    {
+      var comboBox = sender as ComboBox;
+      if (comboBox == null)
+        return;
+
+      var selectedItem = comboBox.SelectedItem as SshHost;
+      if (selectedItem == null)
+        return;
+
+      if (selectedItem.Host == HandSshAction)
+        if (selectedItem.sftpClient != null && selectedItem.sftpClient.IsConnected)
+          selectedItem.sftpClient.Disconnect();
+
+      SetSshVisible(sender);
+    }
+
+    private void SshHost_TextChanged(object sender, TextChangedEventArgs e)
+    {
+      SshConnectionParamChanged(sender, e);
+    }
+
+    private void SshPort_TextChanged(object sender, TextChangedEventArgs e)
+    {
+      SshConnectionParamChanged(sender, e);
+    }
+
+    private void SshLogin_TextChanged(object sender, TextChangedEventArgs e)
+    {
+      SshConnectionParamChanged(sender, e);
+    }
+
+    private void SshConnectButton_Click(object sender, RoutedEventArgs e)
+    {
+      try
+      {
+        ConnectionInfo connectionInfo;
+        var currentSshHost = this.Hosts.SelectedItem as SshHost;
+
+        if (currentSshHost.Host == HandSshAction)
+        {
+          var port = int.Parse(this.SshPort.Text);
+          var login = this.SshLogin.Text;
+          var password = this.SshPassword.Password;
+          var methods = new List<AuthenticationMethod> { new PasswordAuthenticationMethod(login, password) };
+          connectionInfo = new ConnectionInfo(this.SshHost.Text, port, login, methods.ToArray());
+        }
+        else
+        {
+          var port = int.Parse(currentSshHost.Port);
+          var login = currentSshHost.User;
+          var password = this.SshPassword.Password;
+          var identityFile = currentSshHost.IdentityFile;
+          PrivateKeyFile keyFile;
+          if (password == "")
+            keyFile = new PrivateKeyFile(identityFile);
+          else
+            keyFile = new PrivateKeyFile(identityFile, password);
+          var keyFiles = new[] { keyFile };
+          var methods = new List<AuthenticationMethod>{ new PrivateKeyAuthenticationMethod(login, keyFiles) };
+          connectionInfo = new ConnectionInfo(currentSshHost.HostName, port, login, methods.ToArray());
+        }
+        currentSshHost.sftpClient = new SftpClient(connectionInfo);
+        currentSshHost.sftpClient.Connect();
+        this.SshConnectButton.Content = "Connected";
+        this.SshConnectButton.IsEnabled = false;
+      }
+      catch (Exception ex)
+      {
+        MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+      }
+    }
+
+    private void Hosts_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+      var comboBox = sender as ComboBox;
+      if (comboBox == null)
+      {
+        return;
+      }
+
+      var selectedItem = comboBox.SelectedItem as SshHost;
+
+      if (selectedItem == null)
+      {
+        this.TrayInfo.ToolTipText = this.SetToolTipText(string.Empty);
+        return;
+      }
+
+      if (selectedItem.Host == HandSshAction)
+      {
+        if (selectedItem.sftpClient != null && selectedItem.sftpClient.IsConnected)
+        {
+          this.SshHost.Text = selectedItem.sftpClient.ConnectionInfo.Host;
+          this.SshPort.Text = selectedItem.sftpClient.ConnectionInfo.Port.ToString();
+          this.SshLogin.Text = selectedItem.sftpClient.ConnectionInfo.Username;
+        }
+        else
+        {
+          this.SshHost.Text = "";
+          this.SshPort.Text = "22";
+          this.SshLogin.Text = "";
+        }
+      }
+      else
+      {
+        this.SshHost.Text = selectedItem.HostName;
+        this.SshPort.Text = selectedItem.Port;
+        this.SshLogin.Text = selectedItem.User;
+      }
+
+      SetSshVisible(sender);
+    }
+
+    private void SetSshVisible(object sender)
+    {
+      var comboBox = sender as ComboBox;
+      if (comboBox == null)
+      {
+        return;
+      }
+
+      var selectedItem = comboBox.SelectedItem as SshHost;
+
+      if (selectedItem == null)
+      {
+        this.TrayInfo.ToolTipText = this.SetToolTipText(string.Empty);
+        return;
+      }
+
+      if (selectedItem.Host == HandSshAction)
+      {
+        this.SshHost.IsEnabled = true;
+        this.SshPort.IsEnabled = true;
+        this.SshLogin.IsEnabled = true;
+      }
+      else
+      {
+        this.SshHost.IsEnabled = false;
+        this.SshPort.IsEnabled = false;
+        this.SshLogin.IsEnabled = false;
+      }
+      if (selectedItem.sftpClient != null && selectedItem.sftpClient.IsConnected)
+      {
+        this.SshConnectButton.Content = "Connected";
+        this.SshConnectButton.IsEnabled = false;
+      }
+      else
+      {
+        this.SshConnectButton.Content = "Connect";
+        this.SshConnectButton.IsEnabled = true;
+      }
+    }
+    #endregion
+
+    private void RemoteFolder_TextChanged(object sender, TextChangedEventArgs e)
+    {
+      using RegistryKey key = Registry.CurrentUser.CreateSubKey(SettingsWindow.RegKey);
+      key.SetValue(RemoteFolderRegKey, this.RemoteFolder.Text);
+      key.Close();
     }
   }
 }
