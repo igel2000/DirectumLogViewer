@@ -20,7 +20,7 @@ namespace LogViewer
     public static bool CloseToTray { get; set; }
 
     private const string DefaultLogPath = @"D:\Projects\master\Logs";
-    private const string RegKey = @"SOFTWARE\JsonLogViewerSettings";
+    public const string RegKey = @"SOFTWARE\JsonLogViewerSettings";
     private const string LogsPathKey = "LogsPath";
     private const string WhitelistKey = "WhiteList";
     private const string AssociateLogFileKey = "AssociateLogFile";

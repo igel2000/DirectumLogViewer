@@ -173,7 +173,7 @@
                    Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0"/>
 
           <Label Grid.Column="4" Content="RemoteFolder" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
-          <TextBox Grid.Column="5" x:Name="RemoteFolder" Text="" Tag="remote folder"  TextChanged="SshHost_TextChanged"
+          <TextBox Grid.Column="5" x:Name="RemoteFolder" Text="" Tag="remote folder"  TextChanged="RemoteFolder_TextChanged"
                    HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" TextWrapping="Wrap"
                    VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0"/>
 

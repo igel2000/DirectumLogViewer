@@ -21,6 +21,7 @@ using System.Text.RegularExpressions;
 using SshConfigParser;
 using Renci.SshNet.Security;
 using Key = System.Windows.Input.Key;
+using Microsoft.Win32;
 
 namespace LogViewer
 {
@@ -70,6 +71,8 @@ namespace LogViewer
     private LogFile openSshLogFileObject = new LogFile(OpenSshAction, "Open from ssh-file...");
     private const string HandSshAction = "Ввести параметры вручную";
     private SshConfig sshConfig;
+    private const string RemoteFolderRegKey = "RemoteFolder";
+    private const string SshButtonStateRegKey = "SshButtonState";
 
     public MainWindow()
     {
@@ -190,16 +193,24 @@ namespace LogViewer
 
       logLinesView = CollectionViewSource.GetDefaultView(logLines);
 
-      SSHVisibilityToggleBtn.IsChecked = false;
-      SshConfig1.Visibility = Visibility.Collapsed;
-      LogsFileNames.Items.Remove(openSshLogFileObject);
-
       var handSshAction = new SshHost() { Host = HandSshAction };
       Hosts.Items.Add(handSshAction);
       Hosts.SelectedItem = handSshAction;
       var hosts = this.sshConfig.FindHosts();
       foreach (var host in hosts)
         Hosts.Items.Add(this.sshConfig.Compute(host));
+
+      using RegistryKey key = Registry.CurrentUser.CreateSubKey(SettingsWindow.RegKey);
+
+      this.RemoteFolder.Text = (string)key.GetValue(RemoteFolderRegKey, "");
+
+      var isSshVisible = Convert.ToBoolean(key.GetValue(SshButtonStateRegKey, false));
+      if (isSshVisible)
+        SSHVisibilityToggleBtn.IsChecked = true;
+      else
+        SSHVisibilityToggleBtn.IsChecked = false;
+      key.Close();
+
     }
 
     private void InitTenantFilter()
@@ -938,12 +949,18 @@ namespace LogViewer
     {
       SshConfig1.Visibility = Visibility.Visible;
       LogsFileNames.Items.Add(openSshLogFileObject);
+      using RegistryKey key = Registry.CurrentUser.CreateSubKey(SettingsWindow.RegKey);
+      key.SetValue(SshButtonStateRegKey, true);
+      key.Close();
     }
 
     private void SSHVisibilityUnchecked(object sender, RoutedEventArgs e)
     {
       SshConfig1.Visibility = Visibility.Collapsed;
       LogsFileNames.Items.Remove(openSshLogFileObject);
+      using RegistryKey key = Registry.CurrentUser.CreateSubKey(SettingsWindow.RegKey);
+      key.SetValue(SshButtonStateRegKey, false);
+      key.Close();
     }
 
     private void SelectSshFileToOpen(string fileName)
@@ -1119,5 +1136,12 @@ namespace LogViewer
       }
     }
     #endregion
+
+    private void RemoteFolder_TextChanged(object sender, TextChangedEventArgs e)
+    {
+      using RegistryKey key = Registry.CurrentUser.CreateSubKey(SettingsWindow.RegKey);
+      key.SetValue(RemoteFolderRegKey, this.RemoteFolder.Text);
+      key.Close();
+    }
   }
 }
