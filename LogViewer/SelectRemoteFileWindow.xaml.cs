@@ -64,8 +64,11 @@ namespace LogViewer
         this.fileLines.Add(f);
       this.filteredFiles = null;
       this.RemoteFileList.ItemsSource = this.fileLines;
-      this.RemoteFileList.SelectedValue = this.fileLines.First();
-      this.RemoteFileList.ScrollIntoView(this.fileLines.First());
+      if (this.fileLines.Count > 0)
+      {
+        this.RemoteFileList.SelectedValue = this.fileLines.First();
+        this.RemoteFileList.ScrollIntoView(this.fileLines.First());
+      }
 
       filesView = CollectionViewSource.GetDefaultView(fileLines);
     }
