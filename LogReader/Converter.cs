@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -175,6 +175,11 @@ namespace LogReader
         sb.Append(onNewLine);
 
       return sb.ToString();
+    }
+
+    public static string JsonFormat(LogLine logLine)
+    {
+      return Newtonsoft.Json.JsonConvert.SerializeObject(ConvertObjectToDict(logLine));
     }
 
     private static Dictionary<string, string> ParseLogLine(string jsonLine)

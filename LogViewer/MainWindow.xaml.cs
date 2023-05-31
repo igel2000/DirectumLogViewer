@@ -482,6 +482,7 @@ namespace LogViewer
 
           foreach (var logLine in convertedLogLines)
           {
+            logLine.NumLine = logLines.Count;
             logLines.Add(logLine);
 
             if (filteredLogLines != null)
@@ -664,6 +665,71 @@ namespace LogViewer
       if (LogsGrid.SelectedItem != null)
         LogsGrid.ScrollIntoView(LogsGrid.SelectedItem);
 
+    }
+
+    public StringBuilder ReadOriginalSelectedLines()
+    {
+      var currentCurs = Mouse.OverrideCursor;
+      Mouse.OverrideCursor = Cursors.Wait;
+
+      var sb = new StringBuilder();
+
+      long[] indexes = new long[LogsGrid.SelectedItems.Count];
+      var i = 0;
+      foreach (var item in LogsGrid.SelectedItems)
+      {
+        var logLine = (LogLine)item;
+        indexes[i] = logLine.NumLine;
+        i++;
+      }
+
+      string[] f;
+      if (openedLogFile.IsLocal)
+        f = File.ReadAllLines(openedLogFile.FullPath);
+      else
+        f = openedLogFile.SftpClient.ReadAllLines(openedLogFile.FullPath);
+
+      for (var j = 0; j < LogsGrid.SelectedItems.Count; j++)
+        sb.AppendLine(f[indexes[j]]);
+
+      Mouse.OverrideCursor = currentCurs;
+      return sb;
+    }
+
+
+    private void CopyJsonCommand(object sender, ExecutedRoutedEventArgs e)
+    {
+      var sb = ReadOriginalSelectedLines();
+      Clipboard.SetText(sb.ToString());
+    }
+
+    private void SaveAsJsonCommand(object sender, ExecutedRoutedEventArgs e)
+    {
+      var dialog = new SaveFileDialog();
+      dialog.Filter = "Log-files(*.log)|*.log";
+      var result = dialog.ShowDialog(this);
+      if (!(bool)result)
+        return;
+      var sb = ReadOriginalSelectedLines();
+      File.WriteAllText(dialog.FileName, sb.ToString());
+    }
+
+    private void PasteJsonCommand(object sender, ExecutedRoutedEventArgs e)
+    {
+      string tmp;
+      try
+      {
+        tmp = Path.GetTempFileName();
+      }
+      catch (IOException)
+      {
+        MessageBox.Show("Удалите временные файлы вида tmp????.tmp", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        return;
+      }
+      File.WriteAllText(tmp, Clipboard.GetText());
+      var logFile = new LogFile(tmp);
+      LogsFileNames.Items.Insert(LogsFileNames.Items.Count - 1, logFile);
+      LogsFileNames.SelectedItem = logFile;
     }
 
     private void CopyCommand(object sender, ExecutedRoutedEventArgs e)
