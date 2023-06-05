@@ -95,10 +95,10 @@
             <ComboBox x:Name="LogsFileNames" Grid.Column="0" ItemsSource="{Binding}" HorizontalAlignment="Left"  VerticalAlignment="Center" Width="500" Height="25" Margin="0,0,0,0" FontSize="14" DisplayMemberPath="Name" SelectionChanged="Files_SelectionChanged"/>
 
             <Label Grid.Column="1" Content="Tenant" FontStyle="Normal" FontSize="14" VerticalAlignment="Top" Margin="5,0,0,0"/>
-            <ComboBox Grid.Column="2" x:Name="TenantFilter" HorizontalAlignment="Left"  VerticalAlignment="Center" FontStyle="Normal" Width="150" Height="24" FontSize="14" SelectionChanged="FilterTenant_SelectionChanged"/>
+            <ComboBox Grid.Column="2" x:Name="TenantFilter" HorizontalAlignment="Left"  VerticalAlignment="Center" FontStyle="Normal" Width="100" Height="24" FontSize="14" SelectionChanged="FilterTenant_SelectionChanged"/>
 
             <Label  Grid.Column="3" Content="Level" FontStyle="Normal" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
-            <ComboBox Grid.Column="4" x:Name="LevelFilter" HorizontalAlignment="Left"  VerticalAlignment="Center" FontStyle="Normal" Width="150" Height="24" FontSize="14" SelectionChanged="FilterLevel_SelectionChanged"/>
+            <ComboBox Grid.Column="4" x:Name="LevelFilter" HorizontalAlignment="Left"  VerticalAlignment="Center" FontStyle="Normal" Width="100" Height="24" FontSize="14" SelectionChanged="FilterLevel_SelectionChanged"/>
 
 
             <TextBox x:Name="Filter" Grid.Column="5" HorizontalAlignment="Stretch" Style="{StaticResource placeHolder}" Tag="Include filter.." Text="" TextWrapping="Wrap" VerticalAlignment="Center" Height="25" FontSize="14" FontStyle="Normal" Margin="5,0,0,0" TextChanged="Filter_TextChanged"/>
