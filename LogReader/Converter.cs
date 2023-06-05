@@ -177,11 +177,6 @@ namespace LogReader
       return sb.ToString();
     }
 
-    public static string JsonFormat(LogLine logLine)
-    {
-      return Newtonsoft.Json.JsonConvert.SerializeObject(ConvertObjectToDict(logLine));
-    }
-
     private static Dictionary<string, string> ParseLogLine(string jsonLine)
     {
       try
