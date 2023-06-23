@@ -73,6 +73,7 @@ namespace LogViewer
     private SshConfig sshConfig;
     private const string RemoteFolderRegKey = "RemoteFolder";
     private const string SshButtonStateRegKey = "SshButtonState";
+    private bool SshParamIsChanging = false;
 
     public MainWindow()
     {
@@ -1083,17 +1084,23 @@ namespace LogViewer
 
     private void SshConnectionParamChanged(object sender, TextChangedEventArgs e)
     {
-      var comboBox = sender as ComboBox;
-      if (comboBox == null)
+      var currentSshHost = this.Hosts.SelectedItem as SshHost;
+
+      if (this.SshParamIsChanging)
         return;
 
-      var selectedItem = comboBox.SelectedItem as SshHost;
-      if (selectedItem == null)
-        return;
-
-      if (selectedItem.Host == HandSshAction)
-        if (selectedItem.sftpClient != null && selectedItem.sftpClient.IsConnected)
-          selectedItem.sftpClient.Disconnect();
+      if (currentSshHost != null && currentSshHost.Host == HandSshAction)
+      {
+        
+        if (currentSshHost.sftpClient != null)
+        { 
+          if (currentSshHost.sftpClient.IsConnected)
+          {
+            currentSshHost.sftpClient.Disconnect();
+            currentSshHost.sftpClient = null;
+          }
+        }
+      }
 
       SetSshVisible(sender);
     }
@@ -1158,9 +1165,7 @@ namespace LogViewer
     {
       var comboBox = sender as ComboBox;
       if (comboBox == null)
-      {
         return;
-      }
 
       var selectedItem = comboBox.SelectedItem as SshHost;
 
@@ -1172,17 +1177,22 @@ namespace LogViewer
 
       if (selectedItem.Host == HandSshAction)
       {
+
         if (selectedItem.sftpClient != null && selectedItem.sftpClient.IsConnected)
         {
+          this.SshParamIsChanging = true;
           this.SshHost.Text = selectedItem.sftpClient.ConnectionInfo.Host;
           this.SshPort.Text = selectedItem.sftpClient.ConnectionInfo.Port.ToString();
           this.SshLogin.Text = selectedItem.sftpClient.ConnectionInfo.Username;
+          this.SshParamIsChanging = false;
         }
         else
         {
+          this.SshParamIsChanging = true;
           this.SshHost.Text = "";
           this.SshPort.Text = "22";
           this.SshLogin.Text = "";
+          this.SshParamIsChanging = false;
         }
       }
       else
@@ -1197,17 +1207,15 @@ namespace LogViewer
 
     private void SetSshVisible(object sender)
     {
-      var comboBox = sender as ComboBox;
-      if (comboBox == null)
-      {
+      if (this.Hosts == null)
         return;
-      }
 
-      var selectedItem = comboBox.SelectedItem as SshHost;
+      var selectedItem = this.Hosts.SelectedItem as SshHost;
 
       if (selectedItem == null)
       {
-        this.TrayInfo.ToolTipText = this.SetToolTipText(string.Empty);
+        if (this.TrayInfo != null)
+          this.TrayInfo.ToolTipText = this.SetToolTipText(string.Empty);
         return;
       }
 
@@ -1223,6 +1231,7 @@ namespace LogViewer
         this.SshPort.IsEnabled = false;
         this.SshLogin.IsEnabled = false;
       }
+
       if (selectedItem.sftpClient != null && selectedItem.sftpClient.IsConnected)
       {
         this.SshConnectButton.Content = "Connected";
@@ -1242,6 +1251,5 @@ namespace LogViewer
       key.SetValue(RemoteFolderRegKey, this.RemoteFolder.Text);
       key.Close();
     }
-
   }
 }
