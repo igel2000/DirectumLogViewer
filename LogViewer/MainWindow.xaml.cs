@@ -718,13 +718,32 @@ namespace LogViewer
       }
 
       string[] f;
-      if (openedLogFile.IsLocal)
-        f = File.ReadAllLines(openedLogFile.FullPath);
-      else
-        f = openedLogFile.SftpClient.ReadAllLines(openedLogFile.FullPath);
 
-      for (var j = 0; j < LogsGrid.SelectedItems.Count; j++)
-        sb.AppendLine(f[indexes[j]]);
+      try
+      {
+
+        if (openedLogFile.IsLocal)
+        {
+          // f = File.ReadAllLines(openedLogFile.FullPath);
+          FileInfo log = new FileInfo(openedLogFile.FullPath);
+          using (var streamReader = new StreamReader(log.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
+          {
+            string text = streamReader.ReadToEnd();
+            f = text.Split(Environment.NewLine);
+          }
+        }
+        else
+          f = openedLogFile.SftpClient.ReadAllLines(openedLogFile.FullPath);
+
+        for (var j = 0; j < indexes.Count(); j++)
+          if (f.Count() > indexes[j])
+            sb.AppendLine(f[indexes[j]]);
+      }
+      catch (Exception ex)
+      {
+        MessageBox.Show(ex.Message);
+      }
+
 
       Mouse.OverrideCursor = currentCurs;
       return sb;
